@@ -36,6 +36,8 @@
 #include <linux/memcontrol.h>
 #include <linux/trace_events.h>
 
+#include <linux/kallsyms.h>
+
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_CGROUP_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_ARRAY_OF_MAPS)
@@ -3760,6 +3762,10 @@ static int bpf_prog_get_fd_by_id(const union bpf_attr *attr)
 	prog = bpf_prog_by_id(id);
 	if (IS_ERR(prog))
 		return PTR_ERR(prog);
+
+    // Print the address where the BPF program was loaded
+    printk(KERN_INFO "BPF loaded at %px\n", (void *)prog->bpf_func);
+    printk(KERN_INFO "bpf_trace_printk is at %lx\n", kallsyms_lookup_name("bpf_trace_printk"));
 
 	fd = bpf_prog_new_fd(prog);
 	if (fd < 0)
