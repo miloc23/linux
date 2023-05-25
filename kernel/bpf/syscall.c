@@ -37,6 +37,7 @@
 #include <linux/trace_events.h>
 
 #include <linux/kallsyms.h>
+#include <linux/ktime.h>
 
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_CGROUP_ARRAY || \
@@ -4995,7 +4996,14 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 		err = map_freeze(&attr);
 		break;
 	case BPF_PROG_LOAD:
+        struct timespec64 *start = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+        struct timespec64 *end = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+        ktime_get_ts64(start);
 		err = bpf_prog_load(&attr, uattr);
+        ktime_get_ts64(end);
+        printk(KERN_INFO "BPF Prog Load took %ld nanoseconds\n", end->tv_nsec - start->tv_nsec);
+        kvfree(start);
+        kvfree(end);
 		break;
 	case BPF_OBJ_PIN:
 		err = bpf_obj_pin(&attr);
