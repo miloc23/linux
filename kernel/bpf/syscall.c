@@ -5001,7 +5001,7 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
         ktime_get_ts64(start);
 		err = bpf_prog_load(&attr, uattr);
         ktime_get_ts64(end);
-        printk(KERN_INFO "BPF Prog Load took %ld nanoseconds\n", end->tv_nsec - start->tv_nsec);
+        printk(KERN_INFO "BPF Prog %s Load took %ld nanoseconds\n", attr.prog_name, end->tv_nsec - start->tv_nsec);
         kvfree(start);
         kvfree(end);
 		break;
