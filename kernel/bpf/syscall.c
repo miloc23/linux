@@ -2631,8 +2631,19 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (err < 0)
 		goto free_prog_sec;
 
+    /* Time the verifier */
+    struct timespec64 *start = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+    struct timespec64 *end = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+    ktime_get_ts64(start);
+
 	/* run eBPF verifier */
 	err = bpf_check(&prog, attr, uattr);
+
+    ktime_get_ts64(end);
+    printk(KERN_INFO "BPF Prog %s Load took %ld nanoseconds to verify\n", attr->prog_name, end->tv_nsec - start->tv_nsec);
+    kvfree(start);
+    kvfree(end);
+
 	if (err < 0)
 		goto free_used_maps;
 

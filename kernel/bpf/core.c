@@ -2195,7 +2195,17 @@ struct bpf_prog *bpf_prog_select_runtime(struct bpf_prog *fp, int *err)
 		if (*err)
 			return fp;
 
-		fp = bpf_int_jit_compile(fp);
+        struct timespec64 *start = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+        struct timespec64 *end = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+        ktime_get_ts64(start);
+
+	    /* run eBPF jit */
+        fp = bpf_int_jit_compile(fp);
+        ktime_get_ts64(end);
+        printk(KERN_INFO "BPF Prog %s Load took %ld nanoseconds to jit\n", fp->aux->name, end->tv_nsec - start->tv_nsec);
+        kvfree(start);
+        kvfree(end);
+
 		bpf_prog_jit_attempt_done(fp);
 		if (!fp->jited && jit_needed) {
 			*err = -ENOTSUPP;
