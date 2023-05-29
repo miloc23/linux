@@ -3765,8 +3765,8 @@ static int bpf_prog_get_fd_by_id(const union bpf_attr *attr)
 		return PTR_ERR(prog);
 
     // Print the address where the BPF program was loaded
-    printk(KERN_INFO "BPF loaded at %px\n", (void *)prog->bpf_func);
-    printk(KERN_INFO "bpf_trace_printk is at %lx\n", kallsyms_lookup_name("bpf_trace_printk"));
+    //printk(KERN_INFO "BPF loaded at %px\n", (void *)prog->bpf_func);
+    //printk(KERN_INFO "bpf_trace_printk is at %lx\n", kallsyms_lookup_name("bpf_trace_printk"));
 
 	fd = bpf_prog_new_fd(prog);
 	if (fd < 0)
