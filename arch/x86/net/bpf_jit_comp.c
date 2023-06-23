@@ -1535,7 +1535,6 @@ st:			if (is_imm8(insn->off))
 			/* call */
 		case BPF_JMP | BPF_CALL: {
 			int offs;
-
 			func = (u8 *) __bpf_call_base + imm32;
 			if (tail_call_reachable) {
 				/* mov rax, qword ptr [rbp - rounded_stack_depth - 8] */
@@ -1549,8 +1548,10 @@ st:			if (is_imm8(insn->off))
 					return -EINVAL;
 				offs = x86_call_depth_emit_accounting(&prog, func);
 			}
+
 			if (emit_call(&prog, func, image + addrs[i - 1] + offs))
 				return -EINVAL;
+            printk(KERN_INFO "Just jited a BPF_CALL to helper id %d\n", insn->off);
 			break;
 		}
 
