@@ -16820,6 +16820,7 @@ patch_map_ops_generic:
 		}
 
 patch_call_imm:
+
 		fn = env->ops->get_func_proto(insn->imm, env->prog);
 		/* all functions that have prototype and verifier allowed
 		 * programs to call them, must be real in-kernel functions
@@ -16830,7 +16831,10 @@ patch_call_imm:
 				func_id_name(insn->imm), insn->imm);
 			return -EFAULT;
 		}
+        // For a call, insns don't use off reg so we keep the helper id?
+        insn->off = insn->imm;
 		insn->imm = fn->func - __bpf_call_base;
+        printk(KERN_INFO "Fn: %px\tImm: %x\tBPF_BASE: %px\n", fn->func, insn->imm, __bpf_call_base);
 	}
 
 	/* Since poke tab is now finalized, publish aux to tracker. */
@@ -17749,7 +17753,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 		ret = bpf_prog_offload_verifier_prep(env->prog);
 		if (ret)
 			goto skip_full_check;
-	}
+    }
 
 	ret = check_cfg(env);
 	if (ret < 0)
@@ -17766,6 +17770,7 @@ skip_full_check:
 
 	if (ret == 0)
 		ret = check_max_stack_depth(env);
+
 
 	/* instruction rewrites happen after this point */
 	if (ret == 0)
