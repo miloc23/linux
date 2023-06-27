@@ -2170,6 +2170,11 @@ static void bpf_prog_select_func(struct bpf_prog *fp)
  */
 struct bpf_prog *bpf_prog_select_runtime(struct bpf_prog *fp, int *err)
 {
+
+    //int length = fp->len;
+    //for (int c = 0; c < length; c++) {
+    //    printk(KERN_INFO "Insn: %x imm: %d\n", (fp->insnsi + c)->code, (fp->insnsi + c)->imm);
+    //}
 	/* In case of BPF to BPF calls, verifier did all the prep
 	 * work with regards to JITing, etc.
 	 */

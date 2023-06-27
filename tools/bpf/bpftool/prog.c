@@ -38,6 +38,75 @@
 #define BPF_METADATA_PREFIX "bpf_metadata_"
 #define BPF_METADATA_PREFIX_LEN (sizeof(BPF_METADATA_PREFIX) - 1)
 
+struct bpf_program {
+        char *name;
+            char *sec_name;
+                size_t sec_idx;
+                    const struct bpf_sec_def *sec_def;
+                        /* this program's instruction offset (in number of instructions)
+                         *   * within its containing ELF section
+                         *       */
+                        size_t sec_insn_off;
+                            /* number of original instructions in ELF section belonging to this
+                             *   * program, not taking into account subprogram instructions possible
+                             *       * appended later during relocation
+                             *           */
+                            size_t sec_insn_cnt;
+                                /* Offset (in number of instructions) of the start of instruction
+                                 *   * belonging to this BPF program  within its containing main BPF
+                                 *       * program. For the entry-point (main) BPF program, this is always
+                                 *           * zero. For a sub-program, this gets reset before each of main BPF
+                                 *               * programs are processed and relocated and is used to determined
+                                 *                   * whether sub-program was already appended to the main program, and
+                                 *                       * if yes, at which instruction offset.
+                                 *                           */
+                                size_t sub_insn_off;
+
+                                    /* instructions that belong to BPF program; insns[0] is located at
+                                     *   * sec_insn_off instruction within its ELF section in ELF file, so
+                                     *       * when mapping ELF file instruction index to the local instruction,
+                                     *           * one needs to subtract sec_insn_off; and vice versa.
+                                     *               */
+                                    struct bpf_insn *insns;
+                                        /* actual number of instruction in this BPF program's image; for
+                                         *   * entry-point BPF programs this includes the size of main program
+                                         *       * itself plus all the used sub-programs, appended at the end
+                                         *           */
+                                        size_t insns_cnt;
+
+                                            struct reloc_desc *reloc_desc;
+                                                int nr_reloc;
+
+                                                    /* BPF verifier log settings */
+                                                    char *log_buf;
+                                                        size_t log_size;
+                                                            __u32 log_level;
+
+                                                                struct bpf_object *obj;
+
+                                                                    int fd;
+                                                                        bool autoload;
+                                                                            bool autoattach;
+                                                                                bool mark_btf_static;
+                                                                                    enum bpf_prog_type type;
+                                                                                        enum bpf_attach_type expected_attach_type;
+
+                                                                                            int prog_ifindex;
+                                                                                                __u32 attach_btf_obj_fd;
+                                                                                                    __u32 attach_btf_id;
+                                                                                                        __u32 attach_prog_fd;
+
+                                                                                                            void *func_info;
+                                                                                                                __u32 func_info_rec_size;
+                                                                                                                    __u32 func_info_cnt;
+
+                                                                                                                        void *line_info;
+                                                                                                                            __u32 line_info_rec_size;
+                                                                                                                                __u32 line_info_cnt;
+                                                                                                                                    __u32 prog_flags;
+};
+
+
 enum dump_mode {
 	DUMP_JITED,
 	DUMP_XLATED,
@@ -1757,6 +1826,14 @@ static int load_with_options(int argc, char **argv, bool first_prog_only)
 			p_err("object file doesn't contain any bpf program");
 			goto err_close_obj;
 		}
+        
+        int length = prog->insns_cnt;
+        for (int c = 0; c < length; c++) {
+            printf("opcode: %x\tdst: %x\tsrc: %x\toff: %x\timm:%x\n", (prog->insns + c)->code, (prog->insns + c)->dst_reg, (prog->insns + c)->src_reg, (prog->insns + c)->off, (prog->insns + c)->imm);
+        }
+        //for (int i = 0; i < prog->len; i++) {
+         //   printf("%u", (prog->bpf_func + i));
+        //}
 
 		if (auto_attach)
 			err = auto_attach_program(prog, pinfile);
@@ -1873,6 +1950,7 @@ static int do_loader(int argc, char **argv)
 	const char *file;
 	int err = 0;
 
+
 	if (!REQ_ARGS(1))
 		return -1;
 	file = GET_ARG();
@@ -1886,6 +1964,7 @@ static int do_loader(int argc, char **argv)
 		p_err("failed to open object file");
 		goto err_close_obj;
 	}
+    printf("File path is %s\n", file);
 
 	err = bpf_object__gen_loader(obj, &gen);
 	if (err)

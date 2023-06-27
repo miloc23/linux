@@ -16832,7 +16832,7 @@ patch_call_imm:
 			return -EFAULT;
 		}
         // For a call, insns don't use off reg so we keep the helper id?
-        insn->off = insn->imm;
+        //insn->off = insn->imm;
 		insn->imm = fn->func - __bpf_call_base;
         printk(KERN_INFO "Fn: %px\tImm: %x\tBPF_BASE: %px\n", fn->func, insn->imm, __bpf_call_base);
 	}

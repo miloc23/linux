@@ -1367,6 +1367,7 @@ struct bpf_prog_aux {
 		struct work_struct work;
 		struct rcu_head	rcu;
 	};
+    int *relocations; // Holds relocations with the form: offset, helper id
 };
 
 struct bpf_prog {

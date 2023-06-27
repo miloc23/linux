@@ -977,6 +977,8 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	int ilen, proglen = 0;
 	u8 *prog = temp;
 	int err;
+    int reloc_entry = 0;
+    int *relocations = bpf_prog->aux->relocations;
 
 	detect_reg_usage(insn, insn_cnt, callee_regs_used,
 			 &tail_call_seen);
@@ -1547,11 +1549,14 @@ st:			if (is_imm8(insn->off))
 				if (!imm32)
 					return -EINVAL;
 				offs = x86_call_depth_emit_accounting(&prog, func);
+                relocations[reloc_entry] = addrs[i-1];
+                relocations[reloc_entry + 1] = insn->off;
+                reloc_entry += 2;
 			}
 
 			if (emit_call(&prog, func, image + addrs[i - 1] + offs))
 				return -EINVAL;
-            printk(KERN_INFO "Just jited a BPF_CALL to helper id %d\n", insn->off);
+            printk(KERN_INFO "Just jited a BPF_CALL to helper id %d at offset: %d\n", insn->off, addrs[i-1]);
 			break;
 		}
 
@@ -2472,6 +2477,10 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 		prog = tmp;
 	}
 
+    // Make a large initial guess for the size of the relocations
+    // Each insn may require 2 ints
+    prog->aux->relocations = kvmalloc_array((prog->len+1) * 2, sizeof(int), GFP_KERNEL);
+
 	jit_data = prog->aux->jit_data;
 	if (!jit_data) {
 		jit_data = kzalloc(sizeof(*jit_data), GFP_KERNEL);
@@ -2498,6 +2507,8 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog)
 		prog = orig_prog;
 		goto out_addrs;
 	}
+
+
 
 	/*
 	 * Before first pass, make a rough estimation of addrs[]

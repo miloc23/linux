@@ -2601,6 +2601,8 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 			     bpf_prog_insn_size(prog)) != 0)
 		goto free_prog_sec;
 
+    
+
 	prog->orig_prog = NULL;
 	prog->jited = 0;
 
@@ -2657,6 +2659,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 		goto free_used_maps;
 
 	err = bpf_prog_alloc_id(prog);
+    printk(KERN_INFO "BPF prog %s has id %d\n", attr->prog_name, prog->aux->id); 
 	if (err)
 		goto free_used_maps;
 
@@ -2682,6 +2685,8 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (err < 0)
 		bpf_prog_put(prog);
 	return err;
+
+
 
 free_used_maps:
 	/* In case we have subprogs, we need to wait for a grace
@@ -3972,6 +3977,8 @@ static int bpf_prog_get_info_by_fd(struct file *file,
 
 	memcpy(info.tag, prog->tag, sizeof(prog->tag));
 	memcpy(info.name, prog->aux->name, sizeof(prog->aux->name));
+
+    info.relocations = 10;
 
 	mutex_lock(&prog->aux->used_maps_mutex);
 	ulen = info.nr_map_ids;
