@@ -2183,9 +2183,11 @@ struct bpf_prog *bpf_prog_select_runtime(struct bpf_prog *fp, int *err)
 		*err = bpf_prog_alloc_jited_linfo(fp);
 		if (*err)
 			return fp;
-
+        
+        printk(KERN_INFO "Jit Requested: %d\n", fp->jit_requested);
 		fp = bpf_int_jit_compile(fp);
 		bpf_prog_jit_attempt_done(fp);
+        //printk(KERN_INFO "Jited: %d\n", fp->jited);
 		if (!fp->jited && jit_needed) {
 			*err = -ENOTSUPP;
 			return fp;

@@ -12390,6 +12390,7 @@ static int do_check(struct bpf_verifier_env *env)
 					return -EINVAL;
 				}
 				if (insn->src_reg == BPF_PSEUDO_CALL)
+                    // MARK
 					err = check_func_call(env, insn, &env->insn_idx);
 				else if (insn->src_reg == BPF_PSEUDO_KFUNC_CALL)
 					err = check_kfunc_call(env, insn, &env->insn_idx);
@@ -12490,6 +12491,7 @@ process_bpf_exit:
 		}
 
 		env->insn_idx++;
+        printk(KERN_INFO "insn_idx is: %d\n", env->insn_idx);
 	}
 
 	return 0;
@@ -14652,8 +14654,11 @@ static int do_check_common(struct bpf_verifier_env *env, int subprog)
 			 */
 			goto out;
 	}
-
-	ret = do_check(env);
+    
+    printk(KERN_INFO "Len before do_check: %d\n", env->prog->len);
+	//ret = do_check(env);
+    printk(KERN_INFO "Len after do_check: %d\n", env->prog->len);
+    ret = 0;
 out:
 	/* check for NULL is necessary, since cur_state can be freed inside
 	 * do_check() under memory pressure.
@@ -15251,7 +15256,9 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 	env->explored_states = kvcalloc(state_htab_size(env),
 				       sizeof(struct bpf_verifier_state_list *),
 				       GFP_USER);
-	ret = -ENOMEM;
+	//ret = -ENOMEM;
+    printk(KERN_INFO "Len before checking: %d\n", env->prog->len);
+    ret = 0;
 	if (!env->explored_states)
 		goto skip_full_check;
 
@@ -15273,7 +15280,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 
 	ret = resolve_pseudo_ldimm64(env);
 	if (ret < 0)
-		goto skip_full_check;
+ 		goto skip_full_check;
 
 	if (bpf_prog_is_dev_bound(env->prog->aux)) {
 		ret = bpf_prog_offload_verifier_prep(env->prog);
@@ -15281,13 +15288,18 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 			goto skip_full_check;
 	}
 
+    printk(KERN_INFO "Length before check_cfg: %d\n", env->prog->len); 
 	ret = check_cfg(env);
 	if (ret < 0)
 		goto skip_full_check;
 
 	ret = do_check_subprogs(env);
+    printk(KERN_INFO "Length after do_check_subprogs: %d\n", env->prog->len); 
+    // If this is commented out the program doesn't jit
 	ret = ret ?: do_check_main(env);
-
+    //printk(KERN_INFO "Insns processed = %d\n", env->insn_processed);
+    //env->insn_processed = 2;
+    printk(KERN_INFO "Length after do_check_main: %d\n", env->prog->len); 
 	if (ret == 0 && bpf_prog_is_dev_bound(env->prog->aux))
 		ret = bpf_prog_offload_finalize(env);
 
@@ -15296,23 +15308,31 @@ skip_full_check:
 
 	if (ret == 0)
 		ret = check_max_stack_depth(env);
-
+    printk(KERN_INFO "Length after check_max_stack: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Ret is: %d\n", ret);
 	/* instruction rewrites happen after this point */
 	if (ret == 0)
 		ret = optimize_bpf_loop(env);
+    printk(KERN_INFO "Length after optimize_bpf_loop: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Ret is: %d\n", ret);
 
 	if (is_priv) {
 		if (ret == 0)
 			opt_hard_wire_dead_code_branches(env);
-		if (ret == 0)
-			ret = opt_remove_dead_code(env);
+         printk(KERN_INFO "Length after opt_hard_wire: %d\n", env->prog->len); 
+		//if (ret == 0)
+		//	ret = opt_remove_dead_code(env);
+        //printk(KERN_INFO "Length after opt_remove_dead: %d\n", env->prog->len); 
 		if (ret == 0)
 			ret = opt_remove_nops(env);
+        printk(KERN_INFO "Length after opt_remove_nops: %d\n", env->prog->len); 
 	} else {
 		if (ret == 0)
 			sanitize_dead_code(env);
 	}
 
+    printk(KERN_INFO "Length after is_priv: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Ret is: %d\n", ret);
 	if (ret == 0)
 		/* program is valid, convert *(u32*)(ctx + off) accesses */
 		ret = convert_ctx_accesses(env);
@@ -15320,6 +15340,7 @@ skip_full_check:
 	if (ret == 0)
 		ret = do_misc_fixups(env);
 
+    printk(KERN_INFO "Length after fixup: %d\n", env->prog->len); 
 	/* do 32-bit optimization after insn patching has done so those patched
 	 * insns could be handled correctly.
 	 */
@@ -15383,6 +15404,7 @@ skip_full_check:
 	}
 
 	adjust_btf_func(env);
+    printk(KERN_INFO "Length after adjust btf func: %d\n", env->prog->len); 
 
 err_release_maps:
 	if (!env->prog->aux->used_maps)
@@ -15398,8 +15420,11 @@ err_release_maps:
 	 */
 	if (env->prog->type == BPF_PROG_TYPE_EXT)
 		env->prog->expected_attach_type = 0;
-
+    
+    printk(KERN_INFO "prog equals env->prog\n");
+    printk(KERN_INFO "Length before prog = env->prog: %d\n", env->prog->len); 
 	*prog = env->prog;
+    printk(KERN_INFO "Length after prog = env->prog: %d\n", env->prog->len); 
 err_unlock:
 	if (!is_priv)
 		mutex_unlock(&bpf_verifier_lock);

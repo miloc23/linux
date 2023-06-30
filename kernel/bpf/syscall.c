@@ -2601,18 +2601,27 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (err < 0)
 		goto free_prog_sec;
 
+    printk(KERN_INFO "Prog Length Before Check: %d\n", prog->len);
+
 	/* run eBPF verifier */
 	err = bpf_check(&prog, attr, uattr);
+    printk(KERN_INFO "Error is %d\n", err);
 	if (err < 0)
 		goto free_used_maps;
+
+    printk(KERN_INFO "Prog Length After Check: %d\n", prog->len);
 
 	prog = bpf_prog_select_runtime(prog, &err);
-	if (err < 0)
+	if (err < 0) {
+        printk(KERN_INFO "Error in jit\n");
 		goto free_used_maps;
+    }
 
 	err = bpf_prog_alloc_id(prog);
-	if (err)
+	if (err) {
+        printk(KERN_INFO "Error in program allocation\n");
 		goto free_used_maps;
+    }
 
 	/* Upon success of bpf_prog_alloc_id(), the BPF prog is
 	 * effectively publicly exposed. However, retrieving via
