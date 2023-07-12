@@ -36,6 +36,8 @@
 #include <linux/memcontrol.h>
 #include <linux/trace_events.h>
 
+#include <linux/ktime.h>
+
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_CGROUP_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_ARRAY_OF_MAPS)
@@ -2601,25 +2603,35 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (err < 0)
 		goto free_prog_sec;
 
-    printk(KERN_INFO "Prog Length Before Check: %d\n", prog->len);
+    //printk(KERN_INFO "Prog Length Before Check: %d\n", prog->len);
 
 	/* run eBPF verifier */
+    //struct timespec64 *start = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+    //struct timespec64 *end = kzalloc(sizeof(struct timespec64), GFP_KERNEL);
+    //ktime_get_ts64(start);
 	err = bpf_check(&prog, attr, uattr);
-    printk(KERN_INFO "Error is %d\n", err);
+    //ktime_get_ts64(end);
+    //*end = timespec64_sub(*end, *start);
+
+    //printk(KERN_INFO "BPF prog %s took %lld ns to verify\n", attr->prog_name, timespec64_to_ns(end));
+    //kvfree(start);
+    //kvfree(end);
+   
+    //printk(KERN_INFO "Error is %d\n", err);
 	if (err < 0)
 		goto free_used_maps;
 
-    printk(KERN_INFO "Prog Length After Check: %d\n", prog->len);
+    //printk(KERN_INFO "Prog Length After Check: %d\n", prog->len);
 
 	prog = bpf_prog_select_runtime(prog, &err);
 	if (err < 0) {
-        printk(KERN_INFO "Error in jit\n");
+        //printk(KERN_INFO "Error in jit\n");
 		goto free_used_maps;
     }
 
 	err = bpf_prog_alloc_id(prog);
 	if (err) {
-        printk(KERN_INFO "Error in program allocation\n");
+        //printk(KERN_INFO "Error in program allocation\n");
 		goto free_used_maps;
     }
 

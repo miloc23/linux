@@ -12491,7 +12491,7 @@ process_bpf_exit:
 		}
 
 		env->insn_idx++;
-        printk(KERN_INFO "insn_idx is: %d\n", env->insn_idx);
+        //printk(KERN_INFO "insn_idx is: %d\n", env->insn_idx);
 	}
 
 	return 0;
@@ -14655,9 +14655,9 @@ static int do_check_common(struct bpf_verifier_env *env, int subprog)
 			goto out;
 	}
     
-    printk(KERN_INFO "Len before do_check: %d\n", env->prog->len);
-	//ret = do_check(env);
-    printk(KERN_INFO "Len after do_check: %d\n", env->prog->len);
+    //printk(KERN_INFO "Len before do_check: %d\n", env->prog->len);
+	ret = do_check(env);
+    //printk(KERN_INFO "Len after do_check: %d\n", env->prog->len);
     ret = 0;
 out:
 	/* check for NULL is necessary, since cur_state can be freed inside
@@ -15174,6 +15174,9 @@ struct btf *bpf_get_btf_vmlinux(void)
 	return btf_vmlinux;
 }
 
+#define time_func(f) ktime_get_ts64(&start); f ktime_get_ts64(&end); end = timespec64_sub(end, start); times[time_idx] = timespec64_to_ns(&end); printk(KERN_INFO #f " took %ld ns", times[time_idx]); time_idx++;  
+//#define time_func(f) f
+
 int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 {
 	u64 start_time = ktime_get_ns();
@@ -15181,7 +15184,13 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 	struct bpf_verifier_log *log;
 	int i, len, ret = -EINVAL;
 	bool is_priv;
+    struct timespec64 start, end;
+    long times[32]; 
+    int time_idx = 0;
+    long total_time = 0;
 
+    printk(KERN_INFO "Prog verified is %s\n", attr->prog_name);
+    ktime_get_ts64(&start); 
 	/* no program is valid */
 	if (ARRAY_SIZE(bpf_verifier_ops) == 0)
 		return -EINVAL;
@@ -15257,28 +15266,43 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 				       sizeof(struct bpf_verifier_state_list *),
 				       GFP_USER);
 	//ret = -ENOMEM;
-    printk(KERN_INFO "Len before checking: %d\n", env->prog->len);
+    //printk(KERN_INFO "Len before checking: %d\n", env->prog->len);
     ret = 0;
 	if (!env->explored_states)
 		goto skip_full_check;
 
-	ret = add_subprog_and_kfunc(env);
+    ktime_get_ts64(&end);
+    end = timespec64_sub(end, start);
+    times[time_idx] = timespec64_to_ns(&end);
+    printk(KERN_INFO "Header stuff took %ld ns", times[time_idx]);
+    time_idx++;
+
+    //ktime_get_ts64(&start);
+
+	time_func(ret = add_subprog_and_kfunc(env);)
 	if (ret < 0)
 		goto skip_full_check;
 
-	ret = check_subprogs(env);
+    //ktime_get_ts64(&end);
+    //end = timespec64_sub(end, start);
+    //times[time_idx] = timespec64_to_ns(&end);
+    //time_idx++;
+    
+    //printk(KERN_INFO "Took %lld to add subprob and kfunc\n", times[time_idx-1]);
+
+	time_func(ret = check_subprogs(env);)
 	if (ret < 0)
 		goto skip_full_check;
 
-	ret = check_btf_info(env, attr, uattr);
+	time_func(ret = check_btf_info(env, attr, uattr);)
 	if (ret < 0)
 		goto skip_full_check;
 
-	ret = check_attach_btf_id(env);
+	time_func(ret = check_attach_btf_id(env);)
 	if (ret)
 		goto skip_full_check;
 
-	ret = resolve_pseudo_ldimm64(env);
+	time_func(ret = resolve_pseudo_ldimm64(env);)
 	if (ret < 0)
  		goto skip_full_check;
 
@@ -15288,18 +15312,18 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
 			goto skip_full_check;
 	}
 
-    printk(KERN_INFO "Length before check_cfg: %d\n", env->prog->len); 
-	ret = check_cfg(env);
+    //printk(KERN_INFO "Length before check_cfg: %d\n", env->prog->len); 
+	time_func(ret = check_cfg(env);)
 	if (ret < 0)
 		goto skip_full_check;
 
-	ret = do_check_subprogs(env);
-    printk(KERN_INFO "Length after do_check_subprogs: %d\n", env->prog->len); 
+   	time_func(ret = do_check_subprogs(env);)
+    //printk(KERN_INFO "Length after do_check_subprogs: %d\n", env->prog->len); 
     // If this is commented out the program doesn't jit
-	ret = ret ?: do_check_main(env);
+	// time_func(ret = ret ?: do_check_main(env);)
     //printk(KERN_INFO "Insns processed = %d\n", env->insn_processed);
     //env->insn_processed = 2;
-    printk(KERN_INFO "Length after do_check_main: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Length after do_check_main: %d\n", env->prog->len); 
 	if (ret == 0 && bpf_prog_is_dev_bound(env->prog->aux))
 		ret = bpf_prog_offload_finalize(env);
 
@@ -15307,55 +15331,57 @@ skip_full_check:
 	kvfree(env->explored_states);
 
 	if (ret == 0)
-		ret = check_max_stack_depth(env);
-    printk(KERN_INFO "Length after check_max_stack: %d\n", env->prog->len); 
+		time_func(ret = check_max_stack_depth(env);)
+    //printk(KERN_INFO "Length after check_max_stack: %d\n", env->prog->len); 
     //printk(KERN_INFO "Ret is: %d\n", ret);
 	/* instruction rewrites happen after this point */
 	if (ret == 0)
-		ret = optimize_bpf_loop(env);
-    printk(KERN_INFO "Length after optimize_bpf_loop: %d\n", env->prog->len); 
+		time_func(ret = optimize_bpf_loop(env);)
+    //printk(KERN_INFO "Length after optimize_bpf_loop: %d\n", env->prog->len); 
     //printk(KERN_INFO "Ret is: %d\n", ret);
 
 	if (is_priv) {
 		if (ret == 0)
-			opt_hard_wire_dead_code_branches(env);
-         printk(KERN_INFO "Length after opt_hard_wire: %d\n", env->prog->len); 
+			time_func(opt_hard_wire_dead_code_branches(env);)
+         //printk(KERN_INFO "Length after opt_hard_wire: %d\n", env->prog->len); 
 		//if (ret == 0)
-		//	ret = opt_remove_dead_code(env);
+		    //time_func(ret = opt_remove_dead_code(env);)
         //printk(KERN_INFO "Length after opt_remove_dead: %d\n", env->prog->len); 
 		if (ret == 0)
-			ret = opt_remove_nops(env);
-        printk(KERN_INFO "Length after opt_remove_nops: %d\n", env->prog->len); 
+			time_func(ret = opt_remove_nops(env);)
+        //printk(KERN_INFO "Length after opt_remove_nops: %d\n", env->prog->len); 
 	} else {
 		if (ret == 0)
 			sanitize_dead_code(env);
 	}
 
-    printk(KERN_INFO "Length after is_priv: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Length after is_priv: %d\n", env->prog->len); 
     //printk(KERN_INFO "Ret is: %d\n", ret);
 	if (ret == 0)
 		/* program is valid, convert *(u32*)(ctx + off) accesses */
-		ret = convert_ctx_accesses(env);
+		time_func(ret = convert_ctx_accesses(env);)
 
 	if (ret == 0)
-		ret = do_misc_fixups(env);
+		time_func(ret = do_misc_fixups(env);)
 
-    printk(KERN_INFO "Length after fixup: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Length after fixup: %d\n", env->prog->len); 
 	/* do 32-bit optimization after insn patching has done so those patched
 	 * insns could be handled correctly.
 	 */
 	if (ret == 0 && !bpf_prog_is_dev_bound(env->prog->aux)) {
-		ret = opt_subreg_zext_lo32_rnd_hi32(env, attr);
+		time_func(ret = opt_subreg_zext_lo32_rnd_hi32(env, attr);)
 		env->prog->aux->verifier_zext = bpf_jit_needs_zext() ? !ret
 								     : false;
 	}
 
 	if (ret == 0)
-		ret = fixup_call_args(env);
+		time_func(ret = fixup_call_args(env);)
 
 	env->verification_time = ktime_get_ns() - start_time;
 	print_verification_stats(env);
 	env->prog->aux->verified_insns = env->insn_processed;
+
+    ktime_get_ts64(&start);
 
 	if (log->level && bpf_verifier_log_full(log))
 		ret = -ENOSPC;
@@ -15404,7 +15430,7 @@ skip_full_check:
 	}
 
 	adjust_btf_func(env);
-    printk(KERN_INFO "Length after adjust btf func: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Length after adjust btf func: %d\n", env->prog->len); 
 
 err_release_maps:
 	if (!env->prog->aux->used_maps)
@@ -15421,15 +15447,26 @@ err_release_maps:
 	if (env->prog->type == BPF_PROG_TYPE_EXT)
 		env->prog->expected_attach_type = 0;
     
-    printk(KERN_INFO "prog equals env->prog\n");
-    printk(KERN_INFO "Length before prog = env->prog: %d\n", env->prog->len); 
+    //printk(KERN_INFO "prog equals env->prog\n");
+    //printk(KERN_INFO "Length before prog = env->prog: %d\n", env->prog->len); 
 	*prog = env->prog;
-    printk(KERN_INFO "Length after prog = env->prog: %d\n", env->prog->len); 
+    //printk(KERN_INFO "Length after prog = env->prog: %d\n", env->prog->len); 
 err_unlock:
 	if (!is_priv)
 		mutex_unlock(&bpf_verifier_lock);
 	vfree(env->insn_aux_data);
 err_free_env:
 	kfree(env);
+
+    ktime_get_ts64(&end);
+    end = timespec64_sub(end, start);
+    times[time_idx] = timespec64_to_ns(&end);
+    printk(KERN_INFO "Footer stuff took %ld ns", times[time_idx]);
+
+    while(time_idx != -1) {
+        total_time += times[time_idx];
+        time_idx--;
+    }
+    printk(KERN_INFO "Total: %ld ns\n", total_time);
 	return ret;
 }
