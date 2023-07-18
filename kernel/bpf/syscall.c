@@ -4963,6 +4963,8 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 		err = map_freeze(&attr);
 		break;
 	case BPF_PROG_LOAD:
+        memset(&attr, 0, sizeof(attr));
+        copy_from_bpfptr(&attr, uattr, sizeof(attr));
         printk(KERN_INFO "in syscall ptr is %llu", attr.xlated_user_ptr);
 		err = bpf_prog_load(&attr, uattr);
 		break;

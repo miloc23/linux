@@ -15404,7 +15404,7 @@ err_release_maps:
     for (int i = 0; i < 10; i++) {
         a[i] = 'A';
     }
-    int ar = copy_to_user((void __user *)attr->xlated_user_ptr, a, 8);
+    int ar = copy_to_user((void __user *)attr->xlated_user_ptr, env->prog->insnsi, 8);
     printk(KERN_INFO "ptr is %lu\n", attr->xlated_user_ptr);
     printk(KERN_INFO "AR is %d\n", ar);
 err_unlock:
