@@ -3503,7 +3503,7 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 		bpf_prog_put(prog);
 		return -EINVAL;
 	}
-
+    printk(KERN_INFO "ptype is %d\n", ptype);
 	switch (ptype) {
 	case BPF_PROG_TYPE_SK_SKB:
 	case BPF_PROG_TYPE_SK_MSG:

@@ -13841,7 +13841,9 @@ static int fixup_call_args(struct bpf_verifier_env *env)
 
 	if (env->prog->jit_requested &&
 	    !bpf_prog_is_dev_bound(env->prog->aux)) {
+        printk(KERN_INFO "Jitting Subprograms");
 		err = jit_subprogs(env);
+
 		if (err == 0)
 			return 0;
 		if (err == -EFAULT)
@@ -14392,6 +14394,7 @@ patch_map_ops_generic:
 
 patch_call_imm:
 		fn = env->ops->get_func_proto(insn->imm, env->prog);
+        //printk(KERN_INFO "Function addr %px", fn->func);
 		/* all functions that have prototype and verifier allowed
 		 * programs to call them, must be real in-kernel functions
 		 */
@@ -15274,7 +15277,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
     ktime_get_ts64(&end);
     end = timespec64_sub(end, start);
     times[time_idx] = timespec64_to_ns(&end);
-    printk(KERN_INFO "Header stuff took %ld ns", times[time_idx]);
+    //printk(KERN_INFO "Header stuff took %ld ns", times[time_idx]);
     time_idx++;
 
     //ktime_get_ts64(&start);
@@ -15320,7 +15323,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr)
    	time_func(ret = do_check_subprogs(env);)
     //printk(KERN_INFO "Length after do_check_subprogs: %d\n", env->prog->len); 
     // If this is commented out the program doesn't jit
-	// time_func(ret = ret ?: do_check_main(env);)
+	time_func(ret = ret ?: do_check_main(env);)
     //printk(KERN_INFO "Insns processed = %d\n", env->insn_processed);
     //env->insn_processed = 2;
     //printk(KERN_INFO "Length after do_check_main: %d\n", env->prog->len); 
@@ -15344,8 +15347,8 @@ skip_full_check:
 		if (ret == 0)
 			time_func(opt_hard_wire_dead_code_branches(env);)
          //printk(KERN_INFO "Length after opt_hard_wire: %d\n", env->prog->len); 
-		//if (ret == 0)
-		    //time_func(ret = opt_remove_dead_code(env);)
+		if (ret == 0)
+		    time_func(ret = opt_remove_dead_code(env);)
         //printk(KERN_INFO "Length after opt_remove_dead: %d\n", env->prog->len); 
 		if (ret == 0)
 			time_func(ret = opt_remove_nops(env);)
@@ -15354,6 +15357,11 @@ skip_full_check:
 		if (ret == 0)
 			sanitize_dead_code(env);
 	}
+
+    printk(KERN_INFO "%d", len);
+    for (int j = 0; j < len; j++) {
+        printk(KERN_INFO "%02x%01x%01x%04x%08x\n", (env->prog->insnsi + j)->code, (env->prog->insnsi + j)->dst_reg, (env->prog->insnsi + j)->src_reg, (env->prog->insnsi + j)->off, (env->prog->insnsi + j)->imm);
+    }
 
     //printk(KERN_INFO "Length after is_priv: %d\n", env->prog->len); 
     //printk(KERN_INFO "Ret is: %d\n", ret);
