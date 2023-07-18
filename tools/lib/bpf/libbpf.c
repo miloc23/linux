@@ -662,7 +662,11 @@ struct bpf_object {
 
 	struct usdt_manager *usdt_man;
 
+    /* pointer to memory to store xlated insns */
+    void* xlated_user_ptr; 
+
 	char path[];
+
 };
 
 static const char *elf_sym_str(const struct bpf_object *obj, size_t off);
@@ -6730,6 +6734,7 @@ static int bpf_object_load_prog(struct bpf_object *obj, struct bpf_program *prog
 	if (!insns || !insns_cnt)
 		return -EINVAL;
 
+    load_attr.xlated_user_ptr = (__aligned_u64)obj->xlated_user_ptr;
 	load_attr.expected_attach_type = prog->expected_attach_type;
 	if (kernel_supports(obj, FEAT_PROG_NAME))
 		prog_name = prog->name;
@@ -6805,6 +6810,7 @@ retry_load:
 	load_attr.log_buf = log_buf;
 	load_attr.log_size = log_buf_size;
 	load_attr.log_level = log_level;
+    
 
 	ret = bpf_prog_load(prog->type, prog_name, license, insns, insns_cnt, &load_attr);
 	if (ret >= 0) {
@@ -12421,4 +12427,9 @@ void bpf_object__destroy_skeleton(struct bpf_object_skeleton *s)
 	free(s->maps);
 	free(s->progs);
 	free(s);
+}
+
+void bpf_object__set_user(struct bpf_object *obj, void *ptr)
+{
+    obj->xlated_user_ptr = ptr;
 }

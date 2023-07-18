@@ -2472,6 +2472,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (CHECK_ATTR(BPF_PROG_LOAD))
 		return -EINVAL;
 
+    printk(KERN_INFO "Ptr is %llu", attr->xlated_user_ptr);
 	if (attr->prog_flags & ~(BPF_F_STRICT_ALIGNMENT |
 				 BPF_F_ANY_ALIGNMENT |
 				 BPF_F_TEST_STATE_FREQ |
@@ -4962,6 +4963,7 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 		err = map_freeze(&attr);
 		break;
 	case BPF_PROG_LOAD:
+        printk(KERN_INFO "in syscall ptr is %llu", attr.xlated_user_ptr);
 		err = bpf_prog_load(&attr, uattr);
 		break;
 	case BPF_OBJ_PIN:
