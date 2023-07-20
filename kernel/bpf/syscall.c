@@ -2457,6 +2457,7 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 	}
 }
 
+
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD core_relo_rec_size
 
@@ -2472,7 +2473,6 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (CHECK_ATTR(BPF_PROG_LOAD))
 		return -EINVAL;
 
-    printk(KERN_INFO "Ptr is %llu", attr->xlated_user_ptr);
 	if (attr->prog_flags & ~(BPF_F_STRICT_ALIGNMENT |
 				 BPF_F_ANY_ALIGNMENT |
 				 BPF_F_TEST_STATE_FREQ |
@@ -2653,6 +2653,34 @@ free_prog:
 		btf_put(prog->aux->attach_btf);
 	bpf_prog_free(prog);
 	return err;
+}
+
+/* last field in 'union bpf_attr' used by this command */
+#define BPF_PROG_VERIFY_LAST_FELD core_relo_rec_size
+
+static int bpf_prog_verify(union bpf_attr *attr, bpfptr_t uattr)
+{
+    int prog_fd;
+    struct bpf_prog* prog;
+    prog_fd = bpf_prog_load(attr, uattr);
+    prog = bpf_prog_get(prog_fd);
+    printk(KERN_INFO "Prog Name: %s\n", prog->aux->name);
+    return 10;
+}
+
+/* last field in 'union bpf_attr' used by this command */
+#define BPF_PROG_EXTRACT_LAST_FIELD prog_fd
+
+static int bpf_prog_extract(union bpf_attr *attr, bpfptr_t uattr)
+{
+    int prog_fd;
+    struct bpf_prog* prog;
+    prog_fd = attr->prog_fd; 
+    prog = bpf_prog_get(prog_fd);
+    printk(KERN_INFO "Prog Name: %s\n", prog->aux->name);
+
+    copy_to_user(attr->output_ptr, prog->insnsi, 30);
+    return 11;
 }
 
 #define BPF_OBJ_LAST_FIELD file_flags
@@ -4963,9 +4991,6 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 		err = map_freeze(&attr);
 		break;
 	case BPF_PROG_LOAD:
-        memset(&attr, 0, sizeof(attr));
-        copy_from_bpfptr(&attr, uattr, sizeof(attr));
-        printk(KERN_INFO "in syscall ptr is %llu", attr.xlated_user_ptr);
 		err = bpf_prog_load(&attr, uattr);
 		break;
 	case BPF_OBJ_PIN:
@@ -5060,6 +5085,14 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 	case BPF_PROG_BIND_MAP:
 		err = bpf_prog_bind_map(&attr);
 		break;
+    case BPF_PROG_VERIFY:
+        err = bpf_prog_verify(&attr, uattr);
+        //err = bpf_prog_load(&attr, uattr);
+        break;
+    case BPF_PROG_EXTRACT:
+        err = bpf_prog_extract(&attr, uattr);
+        //err = bpf_prog_load(&attr, uattr); 
+        break;
 	default:
 		err = -EINVAL;
 		break;
@@ -5097,6 +5130,8 @@ BPF_CALL_3(bpf_sys_bpf, int, cmd, union bpf_attr *, attr, u32, attr_size)
 	case BPF_BTF_LOAD:
 	case BPF_LINK_CREATE:
 	case BPF_RAW_TRACEPOINT_OPEN:
+    case BPF_PROG_VERIFY: // Same signature as load
+    case BPF_PROG_EXTRACT:
 		break;
 	default:
 		return -EINVAL;

@@ -846,6 +846,24 @@ union bpf_iter_link_info {
  *		Returns zero on success. On error, -1 is returned and *errno*
  *		is set appropriately.
  *
+ * BPF_PROG_VERIFY
+ *  Description
+ *      Verifies a BPF program.
+ *
+ *      This option will be used together with BPF_PROG_EXTRACT to 
+ *      pre-verify a BPF program for use in another Linux kernel.
+ *
+ *  Return
+ *      Returns the final size of the data on success. On errorm -1 is
+ *      returned and *errno* is set appropriately.
+ *
+ * BPF_PROG_EXTRACT
+ *  Description
+ *      Extracts a signed BPF bytecode blob from the kernel.
+ *
+ *  Return
+ *      Returns zero on success. On error, -1 is return and *errno*
+ *      is set appropriately.
  * NOTES
  *	eBPF objects (maps and programs) can be shared between processes.
  *
@@ -900,6 +918,8 @@ enum bpf_cmd {
 	BPF_ITER_CREATE,
 	BPF_LINK_DETACH,
 	BPF_PROG_BIND_MAP,
+    BPF_PROG_VERIFY,
+    BPF_PROG_EXTRACT,
 };
 
 enum bpf_map_type {
@@ -1355,7 +1375,7 @@ union bpf_attr {
 		__u64		flags;
 	} batch;
 
-	struct { /* anonymous struct used by BPF_PROG_LOAD command */
+	struct { /* anonymous struct used by BPF_PROG_LOAD and BPF_PROG_VERIFY command */
 		__u32		prog_type;	/* one of enum bpf_prog_type */
 		__u32		insn_cnt;
 		__aligned_u64	insns;
@@ -1392,6 +1412,12 @@ union bpf_attr {
         __aligned_u64 xlated_user_ptr; /* A user-space pointer to store the xlated insns */
 		__u32		core_relo_rec_size; /* sizeof(struct bpf_core_relo) */
 	};
+
+    struct { /* anonymous struct used by BPF_PROG_EXTRACT command */
+        __aligned_u64 output_ptr;
+        __u32 prog_fd;
+    };
+
 
 	struct { /* anonymous struct used by BPF_OBJ_* commands */
 		__aligned_u64	pathname;

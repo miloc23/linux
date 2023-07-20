@@ -15400,13 +15400,17 @@ err_release_maps:
 		env->prog->expected_attach_type = 0;
 
 	*prog = env->prog;
-    char a[10];
-    for (int i = 0; i < 10; i++) {
-        a[i] = 'A';
-    }
-    int ar = copy_to_user((void __user *)attr->xlated_user_ptr, env->prog->insnsi, 8);
-    printk(KERN_INFO "ptr is %lu\n", attr->xlated_user_ptr);
-    printk(KERN_INFO "AR is %d\n", ar);
+    //int* a = kzalloc(16, GFP_USER);
+    //a[0] = 1;
+    //a[1] = 2;
+    //a[3] = 3;
+    //a[4] = 4; 
+    //printk(KERN_INFO "a is at %px", a);
+    //__aligned_u64 addr = (__aligned_u64)(a); 
+    //put_user(addr, (__aligned_u64 *)attr->xlated_user_ptr);
+    //int ar = copy_to_user((void __user *)attr->xlated_user_ptr, &a, 8);
+    //printk(KERN_INFO "ptr is %lu\n", attr->xlated_user_ptr);
+    //printk(KERN_INFO "AR is %d\n", ar);
 err_unlock:
 	if (!is_priv)
 		mutex_unlock(&bpf_verifier_lock);
