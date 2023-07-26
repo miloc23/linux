@@ -6717,6 +6717,7 @@ static int bpf_object_load_prog(struct bpf_object *obj, struct bpf_program *prog
 	bool own_log_buf = true;
 	__u32 log_level = prog->log_level;
 
+    printf("Loading!\n");
 	if (prog->type == BPF_PROG_TYPE_UNSPEC) {
 		/*
 		 * The program type must be set.  Most likely we couldn't find a proper
@@ -6767,6 +6768,7 @@ static int bpf_object_load_prog(struct bpf_object *obj, struct bpf_program *prog
 	}
 
 	if (obj->gen_loader) {
+        printf("Gen Loader?");
 		bpf_gen__prog_load(obj->gen_loader, prog->type, prog->name,
 				   license, insns, insns_cnt, &load_attr,
 				   prog - obj->programs);

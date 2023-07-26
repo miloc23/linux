@@ -2468,6 +2468,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	int err;
 	char license[128];
 	bool is_gpl;
+    bool bypass_jit = attr->jited != NULL;
 
 	if (CHECK_ATTR(BPF_PROG_LOAD))
 		return -EINVAL;
@@ -2606,7 +2607,18 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 	if (err < 0)
 		goto free_used_maps;
 
-	prog = bpf_prog_select_runtime(prog, &err);
+    if (bypass_jit) {
+        prog->bpf_func = kzalloc(attr->jited_length, GFP_KERNEL);
+        //if (prog->bpf_func == NULL)
+        //    goto free_used_maps;
+        err = copy_from_user(prog->bpf_func, (void *)attr->jited, attr->jited_length);
+        printk(KERN_INFO "Successfully Copied!\n");
+        prog->jited = 1;
+        prog->jited_len = attr->jited_length;
+    }
+    else {
+	    prog = bpf_prog_select_runtime(prog, &err);
+    }
 	if (err < 0)
 		goto free_used_maps;
 

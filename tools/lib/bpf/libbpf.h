@@ -170,6 +170,8 @@ struct bpf_object_open_opts {
 	 */
 	__u32 kernel_log_level;
 
+    bool bypass_jit;
+
 	size_t :0;
 };
 #define bpf_object_open_opts__last_field kernel_log_level
