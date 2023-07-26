@@ -1409,9 +1409,10 @@ union bpf_attr {
 		__u32		core_relo_cnt;	/* number of bpf_core_relo */
 		__aligned_u64	fd_array;	/* array of FDs */
 		__aligned_u64	core_relos;
-        __aligned_u64 xlated_user_ptr; /* A user-space pointer to store the xlated insns */
+        __aligned_u64   blob_len; /* used for BPF_PROG_VERIFY */
 		__u32		core_relo_rec_size; /* sizeof(struct bpf_core_relo) */
 	};
+
 
     struct { /* anonymous struct used by BPF_PROG_EXTRACT command */
         __aligned_u64 output_ptr;

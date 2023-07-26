@@ -900,6 +900,8 @@ enum bpf_cmd {
 	BPF_ITER_CREATE,
 	BPF_LINK_DETACH,
 	BPF_PROG_BIND_MAP,
+    BPF_PROG_VERIFY,
+    BPF_PROG_EXTRACT,
 };
 
 enum bpf_map_type {
@@ -1389,7 +1391,7 @@ union bpf_attr {
 		__u32		core_relo_cnt;	/* number of bpf_core_relo */
 		__aligned_u64	fd_array;	/* array of FDs */
 		__aligned_u64	core_relos;
-        __aligned_u64 xlated_user_ptr; /* A user-space pointer to store the xlated insns */
+        __aligned_u64 blob_len; /* A user-space pointer to store the xlated insns */
 		__u32		core_relo_rec_size; /* sizeof(struct bpf_core_relo) */
 	};
 

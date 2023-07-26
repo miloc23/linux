@@ -2656,16 +2656,21 @@ free_prog:
 }
 
 /* last field in 'union bpf_attr' used by this command */
-#define BPF_PROG_VERIFY_LAST_FELD core_relo_rec_size
+#define BPF_PROG_VERIFY_LAST_FIELD core_relo_rec_size
 
 static int bpf_prog_verify(union bpf_attr *attr, bpfptr_t uattr)
 {
     int prog_fd;
+    int err;
     struct bpf_prog* prog;
     prog_fd = bpf_prog_load(attr, uattr);
     prog = bpf_prog_get(prog_fd);
-    printk(KERN_INFO "Prog Name: %s\n", prog->aux->name);
-    return 10;
+    printk(KERN_INFO "Prog Name: %s Prog Len: %d Ptr %llu", prog->aux->name, prog->len, attr->blob_len);
+
+    if(put_user(prog->len, (int *)attr->blob_len)) 
+        printk("OOPS");
+
+    return prog_fd;
 }
 
 /* last field in 'union bpf_attr' used by this command */
@@ -2675,12 +2680,21 @@ static int bpf_prog_extract(union bpf_attr *attr, bpfptr_t uattr)
 {
     int prog_fd;
     struct bpf_prog* prog;
+
+    //void *user = kzalloc(8, GFP_USER);
+    //void *kern = kzalloc(8, GFP_KERNEL);
+    //printk(KERN_INFO "user %px &user %px kern %px &kern %px", user, &user, kern, &kern);
     prog_fd = attr->prog_fd; 
     prog = bpf_prog_get(prog_fd);
-    printk(KERN_INFO "Prog Name: %s\n", prog->aux->name);
-
-    copy_to_user(attr->output_ptr, prog->insnsi, 30);
-    return 11;
+    if (! prog)
+        return -1;
+    /* Each insns is 8 bytes? */
+    //if (attr->buffer_len < prog->len * sizeof(struct bpf_insn)) {
+    //    return -1;
+    //}
+    printk(KERN_INFO "Prog has len %d\n", prog->len);
+    copy_to_user((void *)attr->output_ptr, prog->insnsi, 10);
+    return 1;
 }
 
 #define BPF_OBJ_LAST_FIELD file_flags
@@ -4961,9 +4975,11 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 	if (err)
 		return err;
 	size = min_t(u32, size, sizeof(attr));
+    //size = sizeof(attr);
 
 	/* copy attributes from user space, may be less than sizeof(bpf_attr) */
 	memset(&attr, 0, sizeof(attr));
+    printk("Size is %d\n", size);
 	if (copy_from_bpfptr(&attr, uattr, size) != 0)
 		return -EFAULT;
 
