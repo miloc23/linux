@@ -88,11 +88,13 @@ int sys_bpf_prog_load(union bpf_attr *attr, unsigned int size, int attempts)
 {
 	int fd;
 
+    printf("blob_len : %llx\n", attr->blob_len);
+
+    printf("In sys_bpf_prog_load size%u\n", size);
+
 	do {
-        int len;
-        attr->blob_len = (__aligned_u64)(&len);
-		fd = sys_bpf_fd(BPF_PROG_VERIFY, attr, size+8);
-        printf("Length is %d\n", len);
+        //attr->blob_len = (__aligned_u64)(&len)8;
+		fd = sys_bpf_fd(BPF_PROG_VERIFY, attr, size);
         // Using VERIFY option for now
 		//fd = sys_bpf_fd(BPF_PROG_LOAD, attr, size);
 	} while (fd < 0 && errno == EAGAIN && --attempts > 0);
@@ -266,6 +268,8 @@ int bpf_prog_load(enum bpf_prog_type prog_type,
 	attr.prog_flags = OPTS_GET(opts, prog_flags, 0);
 	attr.prog_ifindex = OPTS_GET(opts, prog_ifindex, 0);
 	attr.kern_version = OPTS_GET(opts, kern_version, 0);
+
+    attr.blob_len = OPTS_GET(opts, blob_len, 0);
     
     //attr.xlated_user_ptr = OPTS_GET(opts, xlated_user_ptr, 0);
     //printf("%s has %llu\n", prog_name, attr.xlated_user_ptr);

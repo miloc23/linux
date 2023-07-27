@@ -2666,9 +2666,10 @@ static int bpf_prog_verify(union bpf_attr *attr, bpfptr_t uattr)
     prog_fd = bpf_prog_load(attr, uattr);
     prog = bpf_prog_get(prog_fd);
     printk(KERN_INFO "Prog Name: %s Prog Len: %d Ptr %llu", prog->aux->name, prog->len, attr->blob_len);
-
-    if(put_user(prog->len, (int *)attr->blob_len)) 
-        printk("OOPS");
+    
+    if (attr->blob_len) { 
+        put_user(prog->len, (unsigned int *)attr->blob_len); 
+    }
 
     return prog_fd;
 }
@@ -2686,14 +2687,29 @@ static int bpf_prog_extract(union bpf_attr *attr, bpfptr_t uattr)
     //printk(KERN_INFO "user %px &user %px kern %px &kern %px", user, &user, kern, &kern);
     prog_fd = attr->prog_fd; 
     prog = bpf_prog_get(prog_fd);
-    if (! prog)
+    if (! prog) {
+        printk(KERN_INFO "Couldn't get bpf prog");
         return -1;
+    }
+
+    if (prog->aux) {
+        if (prog->aux->name) {
+            printk(KERN_INFO "Prog name is %s", prog->aux->name);
+        }
+    }
     /* Each insns is 8 bytes? */
     //if (attr->buffer_len < prog->len * sizeof(struct bpf_insn)) {
     //    return -1;
     //}
-    printk(KERN_INFO "Prog has len %d\n", prog->len);
-    copy_to_user((void *)attr->output_ptr, prog->insnsi, 10);
+    //printk(KERN_INFO "Prog has len %d\n", prog->len);
+    printk(KERN_INFO "Output ptr: %lx", attr->output_ptr);
+    
+    int mi = copy_to_user((void *)attr->output_ptr, prog->insnsi, attr->blob_size * sizeof(struct bpf_insn));
+    if (mi != 0) {
+        printk(KERN_INFO "Couldn't Copy: %d", mi);
+    }
+
+    printk(KERN_INFO "%llx", prog->insnsi);
     return 1;
 }
 
@@ -4957,6 +4973,13 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 	bool capable;
 	int err;
 
+
+    //if (cmd == BPF_PROG_VERIFY) {
+    //    __aligned_u64 val;
+    //    copy_from_bpfptr_offset(&val, uattr, 136, 8);
+        //printk(KERN_INFO "blob len is %llu", val);
+    //}
+
 	capable = bpf_capable() || !sysctl_unprivileged_bpf_disabled;
 
 	/* Intent here is for unprivileged_bpf_disabled to block key object
@@ -4979,7 +5002,7 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 
 	/* copy attributes from user space, may be less than sizeof(bpf_attr) */
 	memset(&attr, 0, sizeof(attr));
-    printk("Size is %d\n", size);
+    //printk("Size is %d\n Sizeof(attr) is %d", size, sizeof(union bpf_attr));
 	if (copy_from_bpfptr(&attr, uattr, size) != 0)
 		return -EFAULT;
 

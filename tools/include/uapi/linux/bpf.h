@@ -1389,11 +1389,17 @@ union bpf_attr {
 			__u32		attach_btf_obj_fd;
 		};
 		__u32		core_relo_cnt;	/* number of bpf_core_relo */
+        __aligned_u64 blob_len; /* A user-space pointer to store the xlated insns */
 		__aligned_u64	fd_array;	/* array of FDs */
 		__aligned_u64	core_relos;
-        __aligned_u64 blob_len; /* A user-space pointer to store the xlated insns */
 		__u32		core_relo_rec_size; /* sizeof(struct bpf_core_relo) */
 	};
+
+    struct { /* anonymous struct used by BPF_PROG_EXTRACT command */
+        __aligned_u64 output_ptr;
+        __u32 blob_size;
+        __u32 prog_fd;
+    };
 
 	struct { /* anonymous struct used by BPF_OBJ_* commands */
 		__aligned_u64	pathname;

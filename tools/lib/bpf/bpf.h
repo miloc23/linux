@@ -83,6 +83,7 @@ struct bpf_prog_load_opts {
 	const int *fd_array;
 
     __aligned_u64 xlated_user_ptr;
+    __aligned_u64 blob_len;
 
 	/* .BTF.ext func info data */
 	const void *func_info;

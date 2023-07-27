@@ -665,6 +665,9 @@ struct bpf_object {
     /* pointer to memory to store xlated insns */
     void* xlated_user_ptr; 
 
+    /* pointer to memory to store blob_len */
+    void* blob_len;
+
 	char path[];
 
 };
@@ -6734,7 +6737,8 @@ static int bpf_object_load_prog(struct bpf_object *obj, struct bpf_program *prog
 	if (!insns || !insns_cnt)
 		return -EINVAL;
 
-    load_attr.xlated_user_ptr = (__aligned_u64)obj->xlated_user_ptr;
+    //load_attr.xlated_user_ptr = (__aligned_u64)obj->xlated_user_ptr;
+    load_attr.blob_len = (__aligned_u64)obj->blob_len;
 	load_attr.expected_attach_type = prog->expected_attach_type;
 	if (kernel_supports(obj, FEAT_PROG_NAME))
 		prog_name = prog->name;
@@ -12432,4 +12436,9 @@ void bpf_object__destroy_skeleton(struct bpf_object_skeleton *s)
 void bpf_object__set_user(struct bpf_object *obj, void *ptr)
 {
     obj->xlated_user_ptr = ptr;
+}
+
+void bpf_object__set_blob_len(struct bpf_object *obj, void *ptr)
+{
+    obj->blob_len = ptr;
 }

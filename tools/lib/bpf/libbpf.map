@@ -368,6 +368,7 @@ LIBBPF_1.0.0 {
 		libbpf_bpf_prog_type_str;
 		perf_buffer__buffer;
         bpf_object__set_user;
+        bpf_object__set_blob_len;
 };
 
 LIBBPF_1.1.0 {
