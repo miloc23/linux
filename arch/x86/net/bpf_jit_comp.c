@@ -324,13 +324,14 @@ static void emit_prologue(u8 **pprog, u32 stack_depth, bool ebpf_from_cbpf,
 static int emit_patch(u8 **pprog, void *func, void *ip, u8 opcode)
 {
 	u8 *prog = *pprog;
-	s64 offset;
+	u64 offset;
 
-	offset = func - (ip + X86_PATCH_SIZE);
-	if (!is_simm32(offset)) {
-		pr_err("Target call %p is out of range\n", func);
-		return -ERANGE;
-	}
+	//offset = func - (ip + X86_PATCH_SIZE);
+	//if (!is_simm32(offset)) {
+	//	pr_err("Target call %p is out of range\n", func);
+	//	return -ERANGE;
+	//}
+    offset = *(u64 *)func;
 	EMIT1_off32(opcode, offset);
 	*pprog = prog;
 	return 0;
@@ -977,7 +978,9 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	int ilen, proglen = 0;
 	u8 *prog = temp;
 	int err;
+    int helper_offset_idx = 0;
 
+    printk(KERN_INFO "Jitting prog %s", bpf_prog->aux->name);
 	detect_reg_usage(insn, insn_cnt, callee_regs_used,
 			 &tail_call_seen);
 
@@ -1535,6 +1538,7 @@ st:			if (is_imm8(insn->off))
 			/* call */
 		case BPF_JMP | BPF_CALL: {
 			int offs;
+            u64 helper_id;
 
 			func = (u8 *) __bpf_call_base + imm32;
 			if (tail_call_reachable) {
@@ -1549,8 +1553,18 @@ st:			if (is_imm8(insn->off))
 					return -EINVAL;
 				offs = x86_call_depth_emit_accounting(&prog, func);
 			}
-			if (emit_call(&prog, func, image + addrs[i - 1] + offs))
+            /* Make func just be the helper ID
+             * We store this in offset to make the call_depth work  */
+            insn_off = insn->off;
+            //printk(KERN_INFO "Offset is %d", insn_off);
+            helper_id = (u64)insn->off;
+			if (emit_call(&prog, &helper_id, image + addrs[i - 1] + offs))
 				return -EINVAL;
+            printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);
+            if (bpf_prog->aux->helper_offsets) {
+                bpf_prog->aux->helper_offsets[helper_offset_idx] = addrs[i-1] + offs;
+                helper_offset_idx++;
+            }
 			break;
 		}
 

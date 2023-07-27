@@ -17468,6 +17468,7 @@ static int do_misc_fixups(struct bpf_verifier_env *env)
 	struct bpf_prog *new_prog;
 	struct bpf_map *map_ptr;
 	int i, ret, cnt, delta = 0;
+    int helper_calls = 0;
 
 	for (i = 0; i < insn_cnt; i++, insn++) {
 		/* Make divide-by-zero exceptions impossible. */
@@ -17956,7 +17957,13 @@ patch_call_imm:
 				func_id_name(insn->imm), insn->imm);
 			return -EFAULT;
 		}
+        /* Store the helper id in the offset field. 
+         * The number of helpers is low enough that the cast from u32 to s16
+         * is safe */
+        insn->off = insn->imm;
 		insn->imm = fn->func - __bpf_call_base;
+        helper_calls++;
+        
 	}
 
 	/* Since poke tab is now finalized, publish aux to tracker. */
@@ -17977,6 +17984,11 @@ patch_call_imm:
 	}
 
 	sort_kfunc_descs_by_imm_off(env->prog);
+
+    printk(KERN_INFO "There are %d helper calls", helper_calls);
+    
+    env->prog->aux->helper_offsets = kcalloc(sizeof(u32), helper_calls, GFP_KERNEL);
+    
 
 	return 0;
 }

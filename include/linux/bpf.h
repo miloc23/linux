@@ -1406,6 +1406,7 @@ struct bpf_prog_aux {
 	u32 verified_insns;
 	int cgroup_atype; /* enum cgroup_bpf_attach_type */
 	struct bpf_map *cgroup_storage[MAX_BPF_CGROUP_STORAGE_TYPE];
+    u32 *helper_offsets; /* Array of u32's to store offsets to helpers in jited code */
 	char name[BPF_OBJ_NAME_LEN];
 #ifdef CONFIG_SECURITY
 	void *security;
