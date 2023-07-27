@@ -846,6 +846,14 @@ union bpf_iter_link_info {
  *		Returns zero on success. On error, -1 is returned and *errno*
  *		is set appropriately.
  *
+ *	BPF_PROG_EXTRACT
+ *	 Description
+ *	    Extracts a pre-jitted BPF program along with an array of offsets
+ *	    for helper function calls that need to be patched up
+ *
+ *	 Return
+ *	    Returns zero on success. On error, -1 is returned.
+ *
  * NOTES
  *	eBPF objects (maps and programs) can be shared between processes.
  *
@@ -900,6 +908,7 @@ enum bpf_cmd {
 	BPF_ITER_CREATE,
 	BPF_LINK_DETACH,
 	BPF_PROG_BIND_MAP,
+    BPF_PROG_EXTRACT,
 };
 
 enum bpf_map_type {
@@ -1415,6 +1424,11 @@ union bpf_attr {
 		 */
 		__u32		log_true_size;
 	};
+
+    struct { /* anonymous struct used by the BPF_PROG_EXTRACT command */
+        __aligned_u64 output_ptr;
+        __u32 bpf_fd;
+    };
 
 	struct { /* anonymous struct used by BPF_OBJ_* commands */
 		__aligned_u64	pathname;
