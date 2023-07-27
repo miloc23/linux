@@ -1427,7 +1427,8 @@ union bpf_attr {
 
     struct { /* anonymous struct used by the BPF_PROG_EXTRACT command */
         __aligned_u64 output_ptr;
-        __u32 bpf_fd;
+        __u32 output_ptr_len;
+        __u32 prog_fd;
     };
 
 	struct { /* anonymous struct used by BPF_OBJ_* commands */

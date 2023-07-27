@@ -2493,6 +2493,15 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 }
 
 /* last field in 'union bpf_attr' used by this command */
+#define BPF_PROG_EXTRACT_LAST_FIELD prog_fd 
+
+static int bpf_prog_extract(union bpf_attr *attr)
+{
+    printk(KERN_INFO "Extract Stub");
+    return 0;
+}
+
+/* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD log_true_size
 
 static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
@@ -5149,6 +5158,9 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 	case BPF_PROG_BIND_MAP:
 		err = bpf_prog_bind_map(&attr);
 		break;
+    case BPF_PROG_EXTRACT:
+        err = bpf_prog_extract(&attr);
+        break;
 	default:
 		err = -EINVAL;
 		break;
