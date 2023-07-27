@@ -1393,6 +1393,7 @@ union bpf_attr {
 		__aligned_u64	log_buf;	/* user supplied buffer */
 		__u32		kern_version;	/* not used */
 		__u32		prog_flags;
+        __aligned_u64 extract_len; /* user pointer to store the len of extracted data */
 		char		prog_name[BPF_OBJ_NAME_LEN];
 		__u32		prog_ifindex;	/* ifindex of netdev to prep for */
 		/* For some prog types expected attach type must be known at

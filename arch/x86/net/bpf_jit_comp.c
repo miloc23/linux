@@ -999,6 +999,8 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	addrs[0] = proglen;
 	prog = temp;
 
+    bpf_prog->aux->helper_offsets_size = 0;
+
 	for (i = 1; i <= insn_cnt; i++, insn++) {
 		const s32 imm32 = insn->imm;
 		u32 dst_reg = insn->dst_reg;
@@ -1563,6 +1565,7 @@ st:			if (is_imm8(insn->off))
             printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);
             if (bpf_prog->aux->helper_offsets) {
                 bpf_prog->aux->helper_offsets[helper_offset_idx] = addrs[i-1] + offs;
+                bpf_prog->aux->helper_offsets_size++;
                 helper_offset_idx++;
             }
 			break;

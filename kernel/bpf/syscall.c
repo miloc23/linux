@@ -2687,6 +2687,13 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 	err = bpf_prog_new_fd(prog);
 	if (err < 0)
 		bpf_prog_put(prog);
+
+    /* Copy the jited length + the offset length to user pointer */
+    u32 length = 0;
+    length += prog->jited_len;
+    length +=  prog->aux->helper_offsets_size * sizeof(u32);
+    put_user(length, (__u32 *)attr->extract_len);
+    printk(KERN_INFO "Length of the program is %d", length);                                                               
 	return err;
 
 free_used_maps:
