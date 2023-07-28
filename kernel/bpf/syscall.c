@@ -2527,6 +2527,15 @@ static int bpf_prog_extract(union bpf_attr *attr)
 }
 
 /* last field in 'union bpf_attr' used by this command */
+#define BPF_PROG_LOAD_VERIFIED_LAST_FIELD blob_prog_type
+
+static int bpf_prog_load_verified(union bpf_attr *attr)
+{
+    printk(KERN_INFO "Stub Function. Prog type: %d", attr->blob_prog_type);
+    return 0;
+}
+
+/* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD log_true_size
 
 static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
@@ -5192,6 +5201,9 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 		break;
     case BPF_PROG_EXTRACT:
         err = bpf_prog_extract(&attr);
+        break;
+    case BPF_PROG_LOAD_VERIFIED:
+        err = bpf_prog_load_verified(&attr);
         break;
 	default:
 		err = -EINVAL;

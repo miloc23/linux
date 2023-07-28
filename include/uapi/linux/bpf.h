@@ -909,6 +909,7 @@ enum bpf_cmd {
 	BPF_LINK_DETACH,
 	BPF_PROG_BIND_MAP,
     BPF_PROG_EXTRACT,
+    BPF_PROG_LOAD_VERIFIED,
 };
 
 enum bpf_map_type {
@@ -1431,6 +1432,12 @@ union bpf_attr {
         __u32 output_ptr_len;
         __u32 prog_fd;
     };
+
+    struct { /* anonymous struct used by the BPF_PROG_LOAD_VERIFIED command */
+        __aligned_u64 blob;
+        __u64 blob_len;
+        enum bpf_prog_type blob_prog_type; /* prog_type needed for verifier_ops */
+    }; 
 
 	struct { /* anonymous struct used by BPF_OBJ_* commands */
 		__aligned_u64	pathname;
