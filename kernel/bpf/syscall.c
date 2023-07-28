@@ -2497,6 +2497,31 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 
 static int bpf_prog_extract(union bpf_attr *attr)
 {
+    u8 *output = (u8 *)attr->output_ptr;
+    u64 output_len = attr->output_ptr_len;
+    int prog_fd = attr->prog_fd;
+    int helper_len;
+    struct bpf_prog *prog;
+
+    printk(KERN_INFO "You hit the extract button!");
+    
+    if (!output) 
+        return -1;
+
+    prog = bpf_prog_get(prog_fd);
+
+    if(!prog)
+        return -1;
+
+    helper_len = prog->aux->helper_offsets_size * sizeof(u32);
+
+    if (helper_len + prog->jited_len > attr->output_ptr_len)
+        return -1;
+    
+    copy_to_user(output, prog->aux->helper_offsets, helper_len);
+
+    copy_to_user(output+helper_len, prog->bpf_func, prog->jited_len);
+
     printk(KERN_INFO "Extract Stub");
     return 0;
 }
