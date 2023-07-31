@@ -18799,6 +18799,17 @@ struct btf *bpf_get_btf_vmlinux(void)
 	return btf_vmlinux;
 }
 
+int bpf_verifier_env_mock(struct bpf_verifier_env **env, enum bpf_prog_type type)
+{
+    struct bpf_verifier_env *local = kzalloc(sizeof(struct bpf_verifier_env), GFP_KERNEL);
+    if (!local)
+        return -ENOMEM;
+
+	local->ops = bpf_verifier_ops[type];
+    *env = local;
+    return 0;
+}
+
 int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr, __u32 uattr_size)
 {
 	u64 start_time = ktime_get_ns();

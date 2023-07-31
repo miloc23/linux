@@ -37,6 +37,8 @@
 #include <linux/trace_events.h>
 #include <net/netfilter/nf_bpf_link.h>
 
+#include "disasm.h"
+
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_CGROUP_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_ARRAY_OF_MAPS)
@@ -2501,6 +2503,7 @@ static int bpf_prog_extract(union bpf_attr *attr)
     u64 output_len = attr->output_ptr_len;
     int prog_fd = attr->prog_fd;
     int helper_len;
+    u32 offset_end = 0U;
     struct bpf_prog *prog;
 
     printk(KERN_INFO "You hit the extract button!");
@@ -2515,25 +2518,157 @@ static int bpf_prog_extract(union bpf_attr *attr)
 
     helper_len = prog->aux->helper_offsets_size * sizeof(u32);
 
-    if (helper_len + prog->jited_len > attr->output_ptr_len)
+    if (helper_len + prog->jited_len + sizeof(u32) > attr->output_ptr_len)
         return -1;
     
-    copy_to_user(output, prog->aux->helper_offsets, helper_len);
+    if(copy_to_user(output, prog->aux->helper_offsets, helper_len))
+        return -ENOMEM;
 
-    copy_to_user(output+helper_len, prog->bpf_func, prog->jited_len);
+    /* An offset of 0 means end of offset section */
+    if(copy_to_user(output+helper_len, &offset_end, 4))
+       return -ENOMEM;
+
+    helper_len += sizeof(u32);
+
+    if(copy_to_user(output+helper_len, prog->bpf_func, prog->jited_len))
+        return -ENOMEM;
 
     printk(KERN_INFO "Extract Stub");
     return 0;
 }
+
+static u32 bpf_blob_find_begin(u8 *data)
+{
+    u32 ret = 0;
+    u32 *offset = (u32*)data;
+    while (*offset != 0) {
+       ret++;
+       offset++;
+    }
+    /* All valid prog will have at least 4 bytes offset */
+    ret++;
+    return ret;
+}
+
+//bpf_prog_fixup_call_x86(u8 *jit_prog, u32 begin, u32 off, int func_id)
+//{
+//    unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
+//    unsigned long prog_addr = jit_prog; 
+//    s32 relative;
+//
+//    relative = addr - (prog_addr + off);
+//    *(data+(begin*4)+off+1) = relative;
+//
+//    //prog_addr + off + call = addr
+//    //
+//    //addr - (prog_addr + off) = call
+//
+//    //*(data+(begin*4)+off+1) = 0xa;
+//    //*(data+(begin*4)+off+2) = 0xb;
+//    //*(data+(begin*4)+off+3) = 0xc;
+//    //*(data+(begin*4)+off+4) = 0xd;
+//}
 
 /* last field in 'union bpf_attr' used by this command */
 #define BPF_PROG_LOAD_VERIFIED_LAST_FIELD blob_prog_type
 
 static int bpf_prog_load_verified(union bpf_attr *attr)
 {
-    printk(KERN_INFO "Stub Function. Prog type: %d", attr->blob_prog_type);
+    struct bpf_prog *prog;
+    u8 *data;
+    u8 *jit_prog;
+    u32 begin = 0;
+    u32 blob_len;
+    struct bpf_verifier_env* env;
+	const struct bpf_func_proto *fn;
+
+	//prog = bpf_prog_alloc(, GFP_USER);
+
+	//if (!prog) 
+	//	return -ENOMEM;
+
+    //printk(KERN_INFO "Prog allocated at addr: %px", prog);
+
+    //kfree(prog);
+
+    if (!attr->blob_len) 
+        return -EINVAL;
+
+    if (!attr->blob)
+        return -EINVAL;
+
+    data = kzalloc(attr->blob_len, GFP_KERNEL);
+    if (!data)
+        return -EINVAL;
+
+    copy_from_user(data, (void *)attr->blob, attr->blob_len);
+
+    begin = bpf_blob_find_begin(data);
+
+    blob_len = attr->blob_len - (sizeof(u32) * begin);
+
+    jit_prog = kzalloc(blob_len , GFP_KERNEL);
+
+    printk(KERN_INFO "Val at jit_prog[0] is %u", *jit_prog);
+    
+    bpf_verifier_env_mock(&env, attr->blob_prog_type);
+
+    struct bpf_prog a;
+
+    u32 *offset = (u32*) data;
+    u32 imm = 0;
+    for (int i = 0; i < begin - 1; i++) {
+        u32 off = *(offset+i);
+        
+        imm = *(data+(begin*4)+off+1);
+
+		//fn = env->ops->get_func_proto(imm, &a);
+        
+        printk(KERN_INFO "Func id %s", func_id_name(imm));
+        unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
+        printk(KERN_INFO "Helper func at addr %lx", addr);
+        printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
+
+        u32 relative;
+
+        relative = addr - ((__aligned_u64)jit_prog + off);
+        printk(KERN_INFO "Relative is %lx", relative);
+        //*(data+(begin*4)+off+1) = relative;
+        memcpy(data+(begin*4)+off+1, &relative, 4);
+
+        //bpf_prog_fixup_call_x86();
+        //*(data+(begin*4)+off+1) = relative ;
+        //*(data+(begin*4)+off+2) = 0xb;
+        //*(data+(begin*4)+off+3) = 0xc;
+        //*(data+(begin*4)+off+4) = 0xd;
+    }
+
+    memcpy(jit_prog, (data+(begin*sizeof(u32))), blob_len);
+    //*jit_prog = *(data+(begin*sizeof(u32)));
+
+    for (int i = 0; i < blob_len; i++) {
+        printk(KERN_INFO "%x ", *(jit_prog + i));
+    }
+
+
+	//	fn = env->ops->get_func_proto(insn->imm, env->prog);
+		/* all functions that have prototype and verifier allowed
+		 * programs to call them, must be real in-kernel functions
+		 */
+//		if (!fn->func) {
+//			verbose(env,
+//				"kernel subsystem misconfigured func %s#%d\n",
+//				func_id_name(insn->imm), insn->imm);
+//			return -EFAULT;
+//		}
+    kfree(jit_prog);
+    kfree(env);
+
+    //printk(KERN_INFO "Stub Function. Prog type: %d", attr->blob_prog_type);
     return 0;
 }
+
+         
 
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD log_true_size
@@ -2725,7 +2860,8 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
     /* Copy the jited length + the offset length to user pointer */
     u32 length = 0;
     length += prog->jited_len;
-    length +=  prog->aux->helper_offsets_size * sizeof(u32);
+    /* Extra 4 bytes to signal end of offsets */
+    length += (prog->aux->helper_offsets_size * sizeof(u32)) + sizeof(u32);
     put_user(length, (__u32 *)attr->extract_len);
     printk(KERN_INFO "Length of the program is %d", length);                                                               
 	return err;
