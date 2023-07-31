@@ -2658,13 +2658,19 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 //unsigned int (*)(const void *, const struct bpf_insn *)
     prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))jit_prog;
 
+    prog->jited = 1;
+    prog->type = attr->blob_prog_type;
+    prog->jited_len = blob_len;
+
     err = bpf_prog_alloc_id(prog);
     if (err < 0)
         return -1;
 
     bpf_prog_kallsyms_add(prog);
-    perf_event_bpf_event(prog, PERF_BPF_EVENT_PROG_LOAD, 0);
-    bpf_audit_prog(prog, BPF_AUDIT_LOAD);
+    /* We can probably skip this part */
+    //perf_event_bpf_event(prog, PERF_BPF_EVENT_PROG_LOAD, 0);
+    /* Maybe skip this too */ 
+    //bpf_audit_prog(prog, BPF_AUDIT_LOAD);
 
     err = bpf_prog_new_fd(prog);
     if (err < 0)
