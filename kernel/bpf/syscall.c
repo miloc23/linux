@@ -2580,6 +2580,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     u32 begin = 0;
     u32 blob_len;
     struct bpf_verifier_env* env;
+    int err;
 	const struct bpf_func_proto *fn;
 
 	//prog = bpf_prog_alloc(, GFP_USER);
@@ -2650,6 +2651,31 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         printk(KERN_INFO "%x ", *(jit_prog + i));
     }
 
+    /* Allocate the program. Size is 0 bc we don't keep the BPF insns? */
+    prog = bpf_prog_alloc(bpf_prog_size(0), GFP_USER);
+
+    /* set the function to jited code */
+//unsigned int (*)(const void *, const struct bpf_insn *)
+    prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))jit_prog;
+
+    err = bpf_prog_alloc_id(prog);
+    if (err < 0)
+        return -1;
+
+    bpf_prog_kallsyms_add(prog);
+    perf_event_bpf_event(prog, PERF_BPF_EVENT_PROG_LOAD, 0);
+    bpf_audit_prog(prog, BPF_AUDIT_LOAD);
+
+    err = bpf_prog_new_fd(prog);
+    if (err < 0)
+        return -1;
+
+    printk(KERN_INFO "FD is %d", err);
+
+    return err;
+
+
+
 
 	//	fn = env->ops->get_func_proto(insn->imm, env->prog);
 		/* all functions that have prototype and verifier allowed
@@ -2661,11 +2687,11 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 //				func_id_name(insn->imm), insn->imm);
 //			return -EFAULT;
 //		}
-    kfree(jit_prog);
-    kfree(env);
+    //kfree(jit_prog);
+    //kfree(env);
 
     //printk(KERN_INFO "Stub Function. Prog type: %d", attr->blob_prog_type);
-    return 0;
+   // return 0;
 }
 
          
