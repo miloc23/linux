@@ -2569,6 +2569,13 @@ static u32 bpf_blob_find_begin(u8 *data)
 //    //*(data+(begin*4)+off+4) = 0xd;
 //}
 
+/* This is x86 arch specific jit_fill_hole for alloc
+ * Copying this is a hack but I want to see if we can get it to work */
+static void x86_jit_fill_hole(void *area, unsigned int size)
+{
+    memset(area, 0xcc, size);
+}
+
 /* last field in 'union bpf_attr' used by this command */
 #define BPF_PROG_LOAD_VERIFIED_LAST_FIELD blob_prog_type
 
@@ -2582,6 +2589,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     struct bpf_verifier_env* env;
     int err;
 	const struct bpf_func_proto *fn;
+    u8 arr[15];
 
 	//prog = bpf_prog_alloc(, GFP_USER);
 
@@ -2602,19 +2610,26 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     if (!data)
         return -EINVAL;
 
+    printk(KERN_INFO "Arr is at addr %px", arr);
+
     copy_from_user(data, (void *)attr->blob, attr->blob_len);
 
     begin = bpf_blob_find_begin(data);
 
     blob_len = attr->blob_len - (sizeof(u32) * begin);
 
-    jit_prog = kzalloc(blob_len , GFP_KERNEL);
+    /* This doesn't work. Need to use the bpf_jit_binary_pack_alloc and finalize */
+    //jit_prog = kzalloc(blob_len , GFP_KERNEL);
+    //
+   
 
-    printk(KERN_INFO "Val at jit_prog[0] is %u", *jit_prog);
+
+
+    //printk(KERN_INFO "Val at jit_prog[0] is %u", *jit_prog);
     
-    bpf_verifier_env_mock(&env, attr->blob_prog_type);
+    //bpf_verifier_env_mock(&env, attr->blob_prog_type);
 
-    struct bpf_prog a;
+    //struct bpf_prog a;
 
     u32 *offset = (u32*) data;
     u32 imm = 0;
@@ -2630,12 +2645,12 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         printk(KERN_INFO "Helper func at addr %lx", addr);
         printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
 
-        u32 relative;
+        //u32 relative;
 
-        relative = addr - ((__aligned_u64)jit_prog + off);
-        printk(KERN_INFO "Relative is %lx", relative);
+        //relative = addr - ((__aligned_u64)jit_prog + off);
+        //printk(KERN_INFO "Relative is %lx", relative);
         //*(data+(begin*4)+off+1) = relative;
-        memcpy(data+(begin*4)+off+1, &relative, 4);
+        //memcpy(data+(begin*4)+off+1, &relative, 4);
 
         //bpf_prog_fixup_call_x86();
         //*(data+(begin*4)+off+1) = relative ;
@@ -2644,20 +2659,27 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         //*(data+(begin*4)+off+4) = 0xd;
     }
 
-    memcpy(jit_prog, (data+(begin*sizeof(u32))), blob_len);
+    u8 *image;
+    u32 align = __alignof__(struct exception_table_entry);
+    struct bpf_binary_header *rw_header;
+    u8 *rw_image;
+    struct bpf_binary_header *ro_header = bpf_jit_binary_pack_alloc(blob_len, &image, align, &rw_header, &rw_image, x86_jit_fill_hole);
+
+    memcpy(rw_image, (data+(begin*sizeof(u32))), blob_len);
+    prog = bpf_prog_alloc(bpf_prog_size(0), GFP_KERNEL);
+    bpf_jit_binary_pack_finalize(prog, ro_header, rw_header);
     //*jit_prog = *(data+(begin*sizeof(u32)));
 
     for (int i = 0; i < blob_len; i++) {
-        printk(KERN_INFO "%x ", *(jit_prog + i));
+        printk(KERN_INFO "%x ", *(image + i));
     }
 
     /* Allocate the program. Size is 0 bc we don't keep the BPF insns? */
-    prog = bpf_prog_alloc(bpf_prog_size(0), GFP_KERNEL);
 
     /* set the function to jited code */
 //unsigned int (*)(const void *, const struct bpf_insn *)
-    prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))jit_prog;
-    printk(KERN_INFO "Jitted_prog is at addr: %px", jit_prog);
+    prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))image;
+    printk(KERN_INFO "Jitted_prog is at addr: %px", image);
 
     prog->jited = 1;
     prog->type = attr->blob_prog_type;
