@@ -2652,11 +2652,12 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     }
 
     /* Allocate the program. Size is 0 bc we don't keep the BPF insns? */
-    prog = bpf_prog_alloc(bpf_prog_size(0), GFP_USER);
+    prog = bpf_prog_alloc(bpf_prog_size(0), GFP_KERNEL);
 
     /* set the function to jited code */
 //unsigned int (*)(const void *, const struct bpf_insn *)
     prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))jit_prog;
+    printk(KERN_INFO "Jitted_prog is at addr: %px", jit_prog);
 
     prog->jited = 1;
     prog->type = attr->blob_prog_type;
@@ -2677,7 +2678,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         return -1;
 
     printk(KERN_INFO "FD is %d", err);
-
+    
     return err;
 
 
