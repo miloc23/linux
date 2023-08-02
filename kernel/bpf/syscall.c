@@ -2622,6 +2622,13 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     //jit_prog = kzalloc(blob_len , GFP_KERNEL);
     //
    
+    u8 *image;
+    u32 align = __alignof__(struct exception_table_entry);
+    struct bpf_binary_header *rw_header;
+    u8 *rw_image;
+    struct bpf_binary_header *ro_header;
+   
+   ro_header = bpf_jit_binary_pack_alloc(blob_len, &image, align, &rw_header, &rw_image, x86_jit_fill_hole);
 
 
 
@@ -2645,12 +2652,12 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         printk(KERN_INFO "Helper func at addr %lx", addr);
         printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
 
-        //u32 relative;
+        s32 relative;
 
-        //relative = addr - ((__aligned_u64)jit_prog + off);
-        //printk(KERN_INFO "Relative is %lx", relative);
+        relative = addr - (__aligned_u64)image - off;
+        printk(KERN_INFO "Relative is %lx", relative);
         //*(data+(begin*4)+off+1) = relative;
-        //memcpy(data+(begin*4)+off+1, &relative, 4);
+        memcpy(data+(begin*4)+off+1, &relative, 4);
 
         //bpf_prog_fixup_call_x86();
         //*(data+(begin*4)+off+1) = relative ;
@@ -2659,11 +2666,6 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         //*(data+(begin*4)+off+4) = 0xd;
     }
 
-    u8 *image;
-    u32 align = __alignof__(struct exception_table_entry);
-    struct bpf_binary_header *rw_header;
-    u8 *rw_image;
-    struct bpf_binary_header *ro_header = bpf_jit_binary_pack_alloc(blob_len, &image, align, &rw_header, &rw_image, x86_jit_fill_hole);
 
     memcpy(rw_image, (data+(begin*sizeof(u32))), blob_len);
     prog = bpf_prog_alloc(bpf_prog_size(0), GFP_KERNEL);
@@ -2685,10 +2687,14 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     prog->type = attr->blob_prog_type;
     prog->jited_len = blob_len;
 
+    
     err = bpf_prog_alloc_id(prog);
     if (err < 0)
         return -1;
+    
+    prog->aux->load_time = 1;
 
+	prog->aux->user = get_current_user();
     bpf_prog_kallsyms_add(prog);
     /* We can probably skip this part */
     //perf_event_bpf_event(prog, PERF_BPF_EVENT_PROG_LOAD, 0);
@@ -2699,28 +2705,13 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     if (err < 0)
         return -1;
 
+    struct bpf_prog *loaded = bpf_prog_get(err);
+    printk(KERN_INFO "loaded is %px", loaded);
+
+    printk(KERN_INFO "aux is at %px", loaded->aux);
     printk(KERN_INFO "FD is %d", err);
     
     return err;
-
-
-
-
-	//	fn = env->ops->get_func_proto(insn->imm, env->prog);
-		/* all functions that have prototype and verifier allowed
-		 * programs to call them, must be real in-kernel functions
-		 */
-//		if (!fn->func) {
-//			verbose(env,
-//				"kernel subsystem misconfigured func %s#%d\n",
-//				func_id_name(insn->imm), insn->imm);
-//			return -EFAULT;
-//		}
-    //kfree(jit_prog);
-    //kfree(env);
-
-    //printk(KERN_INFO "Stub Function. Prog type: %d", attr->blob_prog_type);
-   // return 0;
 }
 
          
@@ -4585,6 +4576,8 @@ static int bpf_obj_get_info_by_fd(const union bpf_attr *attr,
 	f = fdget(ufd);
 	if (!f.file)
 		return -EBADFD;
+
+    printk(KERN_INFO "bpf_fd op: %px", f.file->f_op);
 
 	if (f.file->f_op == &bpf_prog_fops)
 		err = bpf_prog_get_info_by_fd(f.file, f.file->private_data, attr,
