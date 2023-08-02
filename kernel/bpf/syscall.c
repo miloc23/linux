@@ -2610,7 +2610,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     if (!data)
         return -EINVAL;
 
-    printk(KERN_INFO "Arr is at addr %px", arr);
+    //printk(KERN_INFO "Arr is at addr %px", arr);
 
     copy_from_user(data, (void *)attr->blob, attr->blob_len);
 
@@ -2638,6 +2638,8 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 
     //struct bpf_prog a;
 
+    printk(KERN_INFO "BPF PROGRAM AT ADDR %px", image);
+
     u32 *offset = (u32*) data;
     u32 imm = 0;
     for (int i = 0; i < begin - 1; i++) {
@@ -2647,15 +2649,15 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 
 		//fn = env->ops->get_func_proto(imm, &a);
         
-        printk(KERN_INFO "Func id %s", func_id_name(imm));
+        //printk(KERN_INFO "Func id %s", func_id_name(imm));
         unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
-        printk(KERN_INFO "Helper func at addr %lx", addr);
-        printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
+        printk(KERN_INFO "Helper func at addr %lx and offset in prog is %lu", addr, off);
+        //printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
 
-        s32 relative;
+        s64 relative;
 
-        relative = addr - (__aligned_u64)image - off;
-        printk(KERN_INFO "Relative is %lx", relative);
+        relative = addr - (__aligned_u64)image - off - 5;
+        printk(KERN_INFO "Relative is %lx, resolved is %lx", relative, (__aligned_u64)image + off + 5 + relative);
         //*(data+(begin*4)+off+1) = relative;
         memcpy(data+(begin*4)+off+1, &relative, 4);
 
@@ -2673,7 +2675,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     //*jit_prog = *(data+(begin*sizeof(u32)));
 
     for (int i = 0; i < blob_len; i++) {
-        printk(KERN_INFO "%x ", *(image + i));
+        //printk(KERN_INFO "%x ", *(image + i));
     }
 
     /* Allocate the program. Size is 0 bc we don't keep the BPF insns? */
@@ -2681,7 +2683,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     /* set the function to jited code */
 //unsigned int (*)(const void *, const struct bpf_insn *)
     prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))image;
-    printk(KERN_INFO "Jitted_prog is at addr: %px", image);
+    //printk(KERN_INFO "Jitted_prog is at addr: %px", image);
 
     prog->jited = 1;
     prog->type = attr->blob_prog_type;
@@ -2706,10 +2708,11 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         return -1;
 
     struct bpf_prog *loaded = bpf_prog_get(err);
-    printk(KERN_INFO "loaded is %px", loaded);
+    //printk(KERN_INFO "loaded is %px", loaded);
 
-    printk(KERN_INFO "aux is at %px", loaded->aux);
-    printk(KERN_INFO "FD is %d", err);
+    //lprintk(KERN_INFO "aux is at %px", loaded->aux);
+    //
+    //printk(KERN_INFO "FD is %d", err);
     
     return err;
 }
