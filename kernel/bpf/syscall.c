@@ -2655,7 +2655,8 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         //printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
 
         s64 relative;
-
+        
+        /* This 5 is arch specific */
         relative = addr - (__aligned_u64)image - off - 5;
         printk(KERN_INFO "Relative is %lx, resolved is %lx", relative, (__aligned_u64)image + off + 5 + relative);
         //*(data+(begin*4)+off+1) = relative;
@@ -2688,7 +2689,13 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     prog->jited = 1;
     prog->type = attr->blob_prog_type;
     prog->jited_len = blob_len;
+    prog->expected_attach_type = BPF_TRACE_FENTRY;
 
+	err = find_prog_type(attr->blob_prog_type, prog);
+    if (err < 0) 
+        return -1;
+
+    
     
     err = bpf_prog_alloc_id(prog);
     if (err < 0)
