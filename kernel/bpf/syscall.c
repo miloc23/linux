@@ -2631,6 +2631,12 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
    ro_header = bpf_jit_binary_pack_alloc(blob_len, &image, align, &rw_header, &rw_image, x86_jit_fill_hole);
 
 
+    char * str = kzalloc(13, GFP_KERNEL);
+    strncpy(str, "Hello World\n", 12);
+    str[12] = '\0';
+    printk(KERN_INFO "Str is %s at addr %px", str, str);
+    
+
 
     //printk(KERN_INFO "Val at jit_prog[0] is %u", *jit_prog);
     
@@ -2651,14 +2657,16 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         
         //printk(KERN_INFO "Func id %s", func_id_name(imm));
         unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
+        
         printk(KERN_INFO "Helper func at addr %lx and offset in prog is %lu", addr, off);
         //printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
 
-        s64 relative;
+        //u64 relative = 0xffffffff811b1f41;
+        u64 relative;
         
         /* This 5 is arch specific */
         relative = addr - (__aligned_u64)image - off - 5;
-        printk(KERN_INFO "Relative is %lx, resolved is %lx", relative, (__aligned_u64)image + off + 5 + relative);
+        printk(KERN_INFO "Relative is %lx", relative);
         //*(data+(begin*4)+off+1) = relative;
         memcpy(data+(begin*4)+off+1, &relative, 4);
 
@@ -2669,6 +2677,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         //*(data+(begin*4)+off+4) = 0xd;
     }
 
+    memcpy(data+21, &str, 8);
 
     memcpy(rw_image, (data+(begin*sizeof(u32))), blob_len);
     prog = bpf_prog_alloc(bpf_prog_size(0), GFP_KERNEL);
