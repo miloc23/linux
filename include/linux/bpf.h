@@ -51,6 +51,7 @@ struct module;
 struct bpf_func_state;
 struct ftrace_ops;
 struct cgroup;
+struct bpf_helper_reloc;
 
 extern struct idr btf_idr;
 extern spinlock_t btf_idr_lock;
@@ -1406,8 +1407,9 @@ struct bpf_prog_aux {
 	u32 verified_insns;
 	int cgroup_atype; /* enum cgroup_bpf_attach_type */
 	struct bpf_map *cgroup_storage[MAX_BPF_CGROUP_STORAGE_TYPE];
-    u32 *helper_offsets; /* Array of u32's to store offsets to helpers in jited code */
+    //u32 *helper_offsets; /* Array of u32's to store offsets to helpers in jited code */
     u32 helper_offsets_size; /* Size of the array */
+    struct bpf_helper_reloc * helper_offsets;
 	char name[BPF_OBJ_NAME_LEN];
 #ifdef CONFIG_SECURITY
 	void *security;
@@ -1479,6 +1481,15 @@ struct bpf_prog {
 		DECLARE_FLEX_ARRAY(struct sock_filter, insns);
 		DECLARE_FLEX_ARRAY(struct bpf_insn, insnsi);
 	};
+};
+
+/*
+ * Contains an offset in a program and the name of the helper
+ */
+struct bpf_helper_reloc {
+    u32 offset;
+    u8  id;
+	char name[KSYM_NAME_LEN];
 };
 
 struct bpf_array_aux {

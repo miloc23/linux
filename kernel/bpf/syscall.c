@@ -2499,7 +2499,7 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 
 static int bpf_prog_extract(union bpf_attr *attr)
 {
-    u8 *output = (u8 *)attr->output_ptr;
+    void __user * output = (void __user *)attr->output_ptr;
     u64 output_len = attr->output_ptr_len;
     int prog_fd = attr->prog_fd;
     int helper_len;
@@ -2516,21 +2516,42 @@ static int bpf_prog_extract(union bpf_attr *attr)
     if(!prog)
         return -1;
 
-    helper_len = prog->aux->helper_offsets_size * sizeof(u32);
+    printk(KERN_INFO "Helper offset size is %d\n", prog->aux->helper_offsets_size);
 
-    if (helper_len + prog->jited_len + sizeof(u32) > attr->output_ptr_len)
+    helper_len = prog->aux->helper_offsets_size * (sizeof(u32) + KSYM_NAME_LEN);
+
+    if (helper_len + prog->jited_len > attr->output_ptr_len)
         return -1;
+
+    char name[KSYM_NAME_LEN];
+    int position = 0;
+    for(int i = 0; i < prog->aux->helper_offsets_size; i++) {
+        printk(KERN_INFO "About to resolve to symbol!\n");
+
+        strncpy(name, func_id_name(prog->aux->helper_offsets[i].id), KSYM_NAME_LEN);
+        printk(KERN_INFO "Just found helper %s!\n", name);
+        if(copy_to_user(output + position, &prog->aux->helper_offsets[i].offset, sizeof(u32)))
+           return -ENOMEM;
+
+        if(copy_to_user(output + position + sizeof(u32), name, KSYM_NAME_LEN))
+            return -ENOMEM;
+        position = position + (sizeof(u32) + KSYM_NAME_LEN);
+    }
+//        prog->aux->helper_offsets[i].name = func_id_name(prog->aux->helper_offsets[i].id);
+
+
+    //}    
     
-    if(copy_to_user(output, prog->aux->helper_offsets, helper_len))
-        return -ENOMEM;
+    //if(copy_to_user(output, prog->aux->helper_offsets, helper_len))
+    //    return -ENOMEM;
 
     /* An offset of 0 means end of offset section */
-    if(copy_to_user(output+helper_len, &offset_end, 4))
-       return -ENOMEM;
+    //if(copy_to_user(output+helper_len, &offset_end, 4))
+    //   return -ENOMEM;
 
-    helper_len += sizeof(u32);
+    //helper_len += sizeof(u32);
 
-    if(copy_to_user(output+helper_len, prog->bpf_func, prog->jited_len))
+    if(copy_to_user(output+position, prog->bpf_func, prog->jited_len))
         return -ENOMEM;
 
     printk(KERN_INFO "Extract Stub");
@@ -2926,9 +2947,9 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
     u32 length = 0;
     length += prog->jited_len;
     /* Extra 4 bytes to signal end of offsets */
-    length += (prog->aux->helper_offsets_size * sizeof(u32)) + sizeof(u32);
+    length += prog->aux->helper_offsets_size * (KSYM_NAME_LEN + sizeof(u32));
     put_user(length, (__u32 *)attr->extract_len);
-    printk(KERN_INFO "Length of the program is %d", length);                                                               
+    printk(KERN_INFO "Length of the program with relocation info is %d", length);                                                               
 	return err;
 
 free_used_maps:

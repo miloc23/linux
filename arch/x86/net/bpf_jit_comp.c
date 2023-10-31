@@ -1564,7 +1564,10 @@ st:			if (is_imm8(insn->off))
 				return -EINVAL;
             printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);
             if (bpf_prog->aux->helper_offsets) {
-                bpf_prog->aux->helper_offsets[helper_offset_idx] = addrs[i-1] + offs;
+                bpf_prog->aux->helper_offsets[helper_offset_idx].offset = addrs[i-1] + offs;
+                bpf_prog->aux->helper_offsets[helper_offset_idx].id = insn_off;
+                // Stores the name of the helper into the struct */
+//                bpf_prog->aux->helper_offsets[helper_offset_idx].name = func_id_name(insn_off);
                 bpf_prog->aux->helper_offsets_size++;
                 helper_offset_idx++;
             }
