@@ -2600,6 +2600,8 @@ static void x86_jit_fill_hole(void *area, unsigned int size)
 /* last field in 'union bpf_attr' used by this command */
 #define BPF_PROG_LOAD_VERIFIED_LAST_FIELD blob_prog_type
 
+void * bpf_obj_get_kern(const char *pathname, int flags);
+
 static int bpf_prog_load_verified(union bpf_attr *attr)
 {
     struct bpf_prog *prog;
@@ -2611,6 +2613,11 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     int err;
 	const struct bpf_func_proto *fn;
     u8 arr[15];
+
+    void * pt = bpf_obj_get_kern("/sys/fs/bpf/map1", 0);
+    struct bpf_map * map = (struct bpf_map *)pt;
+
+    printk(KERN_INFO "Map name is %s", map->name);
 
 	//prog = bpf_prog_alloc(, GFP_USER);
 
@@ -2878,6 +2885,9 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 			     bpf_prog_insn_size(prog)) != 0)
 		goto free_prog_sec;
 
+    for (int i = 0; i < prog->len; i++) {
+        printk(KERN_INFO "insn %d op:%x src:%u dst:%u off:%d imm:%d", i, (prog->insnsi+i)->code, (prog->insnsi+i)->dst_reg, (prog->insnsi+i)->src_reg, (prog->insnsi+i)->off, (prog->insnsi+i)->imm);
+    }
 	prog->orig_prog = NULL;
 	prog->jited = 0;
 
