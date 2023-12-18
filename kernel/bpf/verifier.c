@@ -16191,6 +16191,10 @@ static bool bpf_map_is_cgroup_storage(struct bpf_map *map)
 		map->map_type == BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE);
 }
 
+//static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
+//{
+//    return 0;
+//}
 /* find and rewrite pseudo imm in ld_imm64 instructions:
  *
  * 1. if it accesses map FD, replace it with actual map pointer.
@@ -16247,6 +16251,8 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 				goto next_insn;
 			}
 
+            printk(KERN_INFO "Pseudo Map in bpf prog %s\n", env->prog->aux->name);
+            printk(KERN_INFO "Instruction: src: %u, imm: %u", insn[0].src_reg, insn[0].imm);
 			/* In final convert_pseudo_ld_imm64() step, this is
 			 * converted into regular 64-bit imm load insn.
 			 */
@@ -16256,7 +16262,7 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 				break;
 			case BPF_PSEUDO_MAP_FD:
 			case BPF_PSEUDO_MAP_IDX:
-				if (insn[1].imm == 0)
+				if (insn[1].imm == 0) 
 					break;
 				fallthrough;
 			default:

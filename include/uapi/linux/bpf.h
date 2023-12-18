@@ -854,6 +854,10 @@ union bpf_iter_link_info {
  *	 Return
  *	    Returns zero on success. On error, -1 is returned.
  *
+ *	BPF_TEST_MAP
+ *	 Description
+ *	    Syscall to help test map getting imp
+ *
  * NOTES
  *	eBPF objects (maps and programs) can be shared between processes.
  *
@@ -910,6 +914,7 @@ enum bpf_cmd {
 	BPF_PROG_BIND_MAP,
     BPF_PROG_EXTRACT,
     BPF_PROG_LOAD_VERIFIED,
+    BPF_TEST_MAP,
 };
 
 enum bpf_map_type {

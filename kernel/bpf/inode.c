@@ -591,10 +591,9 @@ out:
 	return ERR_PTR(ret);
 }
 
-/*
- * Returns a pointer to a bpf obj struct
+/* Returns a pointer to a bpf_map pointed to by pathname
  */
-void * bpf_obj_get_kern(const char *pathname, int flags)
+void * bpf_map_get_kern(const char *pathname, int flags)
 {
 	enum bpf_type type = BPF_TYPE_UNSPEC;
 	int f_flags;
@@ -607,14 +606,17 @@ void * bpf_obj_get_kern(const char *pathname, int flags)
 
 	raw = bpf_obj_do_get_kern(pathname, &type, f_flags);
 	if (IS_ERR(raw))
-		return PTR_ERR(raw);
+		return raw;
 
 	if (ret < 0)
 		bpf_any_put(raw, type);
-    return raw;
+    if (type == BPF_TYPE_MAP) 
+        return raw;
+    else 
+        return ERR_PTR(-1);
 }
 
-EXPORT_SYMBOL(bpf_obj_get_kern);
+EXPORT_SYMBOL(bpf_map_get_kern);
 
 static struct bpf_prog *__get_prog_inode(struct inode *inode, enum bpf_prog_type type)
 {

@@ -2600,7 +2600,7 @@ static void x86_jit_fill_hole(void *area, unsigned int size)
 /* last field in 'union bpf_attr' used by this command */
 #define BPF_PROG_LOAD_VERIFIED_LAST_FIELD blob_prog_type
 
-void * bpf_obj_get_kern(const char *pathname, int flags);
+extern void * bpf_map_get_kern(const char *pathname, int flags);
 
 static int bpf_prog_load_verified(union bpf_attr *attr)
 {
@@ -2614,10 +2614,10 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 	const struct bpf_func_proto *fn;
     u8 arr[15];
 
-    void * pt = bpf_obj_get_kern("/sys/fs/bpf/map1", 0);
-    struct bpf_map * map = (struct bpf_map *)pt;
+    //void * pt = bpf_obj_get_kern("/sys/fs/bpf/map1", 0);
+    //struct bpf_map * map = (struct bpf_map *)pt;
 
-    printk(KERN_INFO "Map name is %s", map->name);
+    //printk(KERN_INFO "Map name is %s", map->name);
 
 	//prog = bpf_prog_alloc(, GFP_USER);
 
@@ -2760,6 +2760,17 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     
     return err;
 }
+
+/* Testing function as a syscall
+ */
+static void bpf_test_map(void)
+{
+    void * pt = bpf_map_get_kern("/sys/fs/bpf/map1", 0);
+    struct bpf_map * map = (struct bpf_map *)pt;
+
+    printk(KERN_INFO "Map name is %s", map->name);
+}
+
 
          
 
@@ -5438,6 +5449,10 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
         break;
     case BPF_PROG_LOAD_VERIFIED:
         err = bpf_prog_load_verified(&attr);
+        break;
+    case BPF_TEST_MAP:
+        bpf_test_map();
+        err = 0;
         break;
 	default:
 		err = -EINVAL;

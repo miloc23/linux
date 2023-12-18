@@ -1166,6 +1166,9 @@ static __always_inline __nocfi unsigned int bpf_dispatcher_nop_func(
 	const struct bpf_insn *insnsi,
 	bpf_func_t bpf_func)
 {
+    //unsigned int val = bpf_func(ctx, insnsi);
+    //printk(KERN_INFO "return is %u", val);
+    //return val;
 	return bpf_func(ctx, insnsi);
 }
 
