@@ -16,6 +16,10 @@
 #include <asm/set_memory.h>
 #include <asm/nospec-branch.h>
 #include <asm/text-patching.h>
+//#include <linux/disasm.h>
+//
+
+extern const char *func_id_name(int id);
 
 static u8 *emit_code(u8 *ptr, u32 bytes, unsigned int len)
 {
@@ -979,6 +983,7 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	u8 *prog = temp;
 	int err;
     int helper_offset_idx = 0;
+    int relocation_idx = 0;
 
     printk(KERN_INFO "Jitting prog %s", bpf_prog->aux->name);
 	detect_reg_usage(insn, insn_cnt, callee_regs_used,
@@ -1563,14 +1568,21 @@ st:			if (is_imm8(insn->off))
 			if (emit_call(&prog, &helper_id, image + addrs[i - 1] + offs))
 				return -EINVAL;
             printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);
-            if (bpf_prog->aux->helper_offsets) {
-                bpf_prog->aux->helper_offsets[helper_offset_idx].offset = addrs[i-1] + offs;
-                bpf_prog->aux->helper_offsets[helper_offset_idx].id = insn_off;
-                // Stores the name of the helper into the struct */
-//                bpf_prog->aux->helper_offsets[helper_offset_idx].name = func_id_name(insn_off);
-                bpf_prog->aux->helper_offsets_size++;
-                helper_offset_idx++;
-            }
+            // Does not support kfunc
+            if (bpf_prog->aux->relocations) {
+               bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1] + offs;
+               strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, func_id_name(insn_off), KSYM_NAME_LEN);
+               bpf_prog->aux->relocation_size++;
+               relocation_idx++;
+            } 
+            //if (bpf_prog->aux->helper_offsets) {
+            //    bpf_prog->aux->helper_offsets[helper_offset_idx].offset = addrs[i-1] + offs;
+            //    bpf_prog->aux->helper_offsets[helper_offset_idx].id = insn_off;
+            //    // Stores the name of the helper into the struct */
+//          //      bpf_prog->aux->helper_offsets[helper_offset_idx].name = func_id_name(insn_off);
+            //    bpf_prog->aux->helper_offsets_size++;
+            //    helper_offset_idx++;
+            //}
 			break;
 		}
 

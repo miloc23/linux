@@ -16289,6 +16289,7 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 
 			f = fdget(fd);
 			map = __bpf_map_get(f);
+            printk(KERN_INFO "Map name is %s\n", map->name);
 			if (IS_ERR(map)) {
 				verbose(env, "fd %d is not pointing to valid bpf_map\n",
 					insn[0].imm);
@@ -16331,7 +16332,10 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 				aux->map_off = off;
 				addr += off;
 			}
-
+            
+            // Replace with F's to see
+            //insn[0].imm = 0xFFFFFFFF;
+            //insn[1].imm = 0xFFFFFFFF;
 			insn[0].imm = (u32)addr;
 			insn[1].imm = addr >> 32;
 

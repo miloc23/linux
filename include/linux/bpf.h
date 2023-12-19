@@ -1450,6 +1450,9 @@ struct bpf_prog_aux {
 		struct work_struct work;
 		struct rcu_head	rcu;
 	};
+    // Relocations for this bpf program
+    struct bpf_relocation * relocations;
+    u32 relocation_size;
 };
 
 struct bpf_prog {

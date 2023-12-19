@@ -2502,7 +2502,7 @@ static int bpf_prog_extract(union bpf_attr *attr)
     void __user * output = (void __user *)attr->output_ptr;
     u64 output_len = attr->output_ptr_len;
     int prog_fd = attr->prog_fd;
-    int helper_len;
+    int relocation_len;
     u32 offset_end = 0U;
     struct bpf_prog *prog;
 
@@ -2516,27 +2516,36 @@ static int bpf_prog_extract(union bpf_attr *attr)
     if(!prog)
         return -1;
 
-    printk(KERN_INFO "Helper offset size is %d\n", prog->aux->helper_offsets_size);
+    printk(KERN_INFO "Relocation size is %d\n", prog->aux->relocation_size);
 
-    helper_len = prog->aux->helper_offsets_size * (sizeof(u32) + KSYM_NAME_LEN);
+    relocation_len = prog->aux->helper_offsets_size * sizeof(struct bpf_relocation);
 
-    if (helper_len + prog->jited_len > attr->output_ptr_len)
+    if (relocation_len + prog->jited_len > attr->output_ptr_len)
         return -1;
 
-    char name[KSYM_NAME_LEN];
     int position = 0;
-    for(int i = 0; i < prog->aux->helper_offsets_size; i++) {
-        printk(KERN_INFO "About to resolve to symbol!\n");
-
-        strncpy(name, func_id_name(prog->aux->helper_offsets[i].id), KSYM_NAME_LEN);
-        printk(KERN_INFO "Just found helper %s!\n", name);
-        if(copy_to_user(output + position, &prog->aux->helper_offsets[i].offset, sizeof(u32)))
+    for (int i = 0; i < prog->aux->relocation_size; i++) {
+        if(copy_to_user(output + position, &prog->aux->relocations[i].offset, sizeof(u32)))
            return -ENOMEM;
-
-        if(copy_to_user(output + position + sizeof(u32), name, KSYM_NAME_LEN))
+        if(copy_to_user(output + position + sizeof(u32), prog->aux->relocations[i].symbol, KSYM_NAME_LEN))
             return -ENOMEM;
+
         position = position + (sizeof(u32) + KSYM_NAME_LEN);
     }
+    //char name[KSYM_NAME_LEN];
+    //int position = 0;
+    //for(int i = 0; i < prog->aux->helper_offsets_size; i++) {
+    //    printk(KERN_INFO "About to resolve to symbol!\n");
+
+    //    strncpy(name, func_id_name(prog->aux->helper_offsets[i].id), KSYM_NAME_LEN);
+    //    printk(KERN_INFO "Just found helper %s!\n", name);
+    //    if(copy_to_user(output + position, &prog->aux->helper_offsets[i].offset, sizeof(u32)))
+    //       return -ENOMEM;
+
+    //    if(copy_to_user(output + position + sizeof(u32), name, KSYM_NAME_LEN))
+    //        return -ENOMEM;
+    //    position = position + (sizeof(u32) + KSYM_NAME_LEN);
+    //}
 //        prog->aux->helper_offsets[i].name = func_id_name(prog->aux->helper_offsets[i].id);
 
 
@@ -2882,6 +2891,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 	prog->aux->dev_bound = !!attr->prog_ifindex;
 	prog->aux->sleepable = attr->prog_flags & BPF_F_SLEEPABLE;
 	prog->aux->xdp_has_frags = attr->prog_flags & BPF_F_XDP_HAS_FRAGS;
+    
 
 	err = security_bpf_prog_alloc(prog->aux);
 	if (err)
@@ -2890,15 +2900,18 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 	prog->aux->user = get_current_user();
 	prog->len = attr->insn_cnt;
 
+    // Allocate memory for relocations
+    prog->aux->relocations = kzalloc(prog->len * sizeof(struct bpf_relocation), GFP_KERNEL);
+
 	err = -EFAULT;
 	if (copy_from_bpfptr(prog->insns,
 			     make_bpfptr(attr->insns, uattr.is_kernel),
 			     bpf_prog_insn_size(prog)) != 0)
 		goto free_prog_sec;
 
-    for (int i = 0; i < prog->len; i++) {
-        printk(KERN_INFO "insn %d op:%x src:%u dst:%u off:%d imm:%d", i, (prog->insnsi+i)->code, (prog->insnsi+i)->dst_reg, (prog->insnsi+i)->src_reg, (prog->insnsi+i)->off, (prog->insnsi+i)->imm);
-    }
+    //for (int i = 0; i < prog->len; i++) {
+    //    printk(KERN_INFO "insn %d op:%x src:%u dst:%u off:%d imm:%d", i, (prog->insnsi+i)->code, (prog->insnsi+i)->dst_reg, (prog->insnsi+i)->src_reg, (prog->insnsi+i)->off, (prog->insnsi+i)->imm);
+    //}
 	prog->orig_prog = NULL;
 	prog->jited = 0;
 
