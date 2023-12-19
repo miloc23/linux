@@ -1382,6 +1382,19 @@ st:			if (is_imm8(insn->off))
 		case BPF_LDX | BPF_PROBE_MEM | BPF_DW:
 			insn_off = insn->off;
 
+            // in a pseudo load *I think*
+            if (insn->code == BPF_IMM | BPF_DW | BPF_LD) {
+                printk(KERN_INFO "Pseudo Load in JIT");
+                if (bpf_prog->aux->relocations) {
+                   bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
+                   bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
+                   strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, "TestMap", KSYM_NAME_LEN);
+                   bpf_prog->aux->relocation_size++;
+                   relocation_idx++;
+                } 
+            }
+                
+                    // This is our offset? image + addrs[i - 1]
 			if (BPF_MODE(insn->code) == BPF_PROBE_MEM) {
 				/* Conservatively check that src_reg + insn->off is a kernel address:
 				 *   src_reg + insn->off >= TASK_SIZE_MAX + PAGE_SIZE
@@ -1571,6 +1584,7 @@ st:			if (is_imm8(insn->off))
             // Does not support kfunc
             if (bpf_prog->aux->relocations) {
                bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1] + offs;
+               bpf_prog->aux->relocations[relocation_idx].type = R_PROG;
                strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, func_id_name(insn_off), KSYM_NAME_LEN);
                bpf_prog->aux->relocation_size++;
                relocation_idx++;
