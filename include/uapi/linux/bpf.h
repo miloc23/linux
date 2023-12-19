@@ -78,6 +78,7 @@ struct bpf_insn {
 	__u8	src_reg:4;	/* source register */
 	__s16	off;		/* signed offset */
 	__s32	imm;		/* signed immediate constant */
+//    char map_name[BPF_OBJ_NAME_LEN]; // This  is for map names - hacky
 };
 
 /* Key of an a BPF_MAP_TYPE_LPM_TRIE entry */

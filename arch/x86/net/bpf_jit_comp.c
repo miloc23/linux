@@ -1383,12 +1383,12 @@ st:			if (is_imm8(insn->off))
 			insn_off = insn->off;
 
             // in a pseudo load *I think*
-            if (insn->code == BPF_IMM | BPF_DW | BPF_LD) {
+            if (insn->code == (BPF_IMM | BPF_DW | BPF_LD)) {
                 printk(KERN_INFO "Pseudo Load in JIT");
                 if (bpf_prog->aux->relocations) {
                    bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
                    bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
-                   strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, "TestMap", KSYM_NAME_LEN);
+                   strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, "testmap", KSYM_NAME_LEN);
                    bpf_prog->aux->relocation_size++;
                    relocation_idx++;
                 } 
