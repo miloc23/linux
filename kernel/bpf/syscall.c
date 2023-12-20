@@ -2527,10 +2527,12 @@ static int bpf_prog_extract(union bpf_attr *attr)
     for (int i = 0; i < prog->aux->relocation_size; i++) {
         if(copy_to_user(output + position, &prog->aux->relocations[i].offset, sizeof(u32)))
            return -ENOMEM;
-        if(copy_to_user(output + position + sizeof(u32), prog->aux->relocations[i].symbol, KSYM_NAME_LEN))
-            return -ENOMEM;
+        if(copy_to_user(output + position + sizeof(u32), &prog->aux->relocations[i].type, sizeof(enum bpf_relocation_type)))
+           return -ENOMEM;
+        if(copy_to_user(output + position + sizeof(u32) + sizeof(enum bpf_relocation_type), prog->aux->relocations[i].symbol, KSYM_NAME_LEN))
+           return -ENOMEM;
 
-        position = position + (sizeof(u32) + KSYM_NAME_LEN);
+        position = position + sizeof(struct bpf_relocation);
     }
     //char name[KSYM_NAME_LEN];
     //int position = 0;
