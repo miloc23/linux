@@ -12,8 +12,8 @@
 #include <linux/bpf_common.h>
 
 // Maybe we should pull in the header file?
-#include <linux/kallsyms.h>
-//#define KSYM_NAME_LEN 512
+//#include <linux/kallsyms.h>
+#define KSYM_NAME_LEN 512
 
 /* Extended instruction set based on top of classic BPF */
 
@@ -7213,8 +7213,8 @@ enum bpf_relocation_type {
  * Struct for relocations for linking
  */
 struct bpf_relocation {
+    enum bpf_relocation_type type;
     __u32 offset;
     char symbol[KSYM_NAME_LEN];
-    enum bpf_relocation_type type;
 };
 #endif /* _UAPI__LINUX_BPF_H__ */

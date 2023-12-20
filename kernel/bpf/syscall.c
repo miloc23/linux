@@ -2525,12 +2525,14 @@ static int bpf_prog_extract(union bpf_attr *attr)
 
     int position = 0;
     for (int i = 0; i < prog->aux->relocation_size; i++) {
-        if(copy_to_user(output + position, &prog->aux->relocations[i].offset, sizeof(u32)))
-           return -ENOMEM;
-        if(copy_to_user(output + position + sizeof(u32), &prog->aux->relocations[i].type, sizeof(enum bpf_relocation_type)))
-           return -ENOMEM;
-        if(copy_to_user(output + position + sizeof(u32) + sizeof(enum bpf_relocation_type), prog->aux->relocations[i].symbol, KSYM_NAME_LEN))
-           return -ENOMEM;
+        if (copy_to_user(output + position, &prog->aux->relocations[i], sizeof(struct bpf_relocation)))
+            return -ENOMEM;
+        //if(copy_to_user(output + position, &prog->aux->relocations[i].offset, sizeof(u32)))
+        //   return -ENOMEM;
+        //if(copy_to_user(output + position + sizeof(u32), &prog->aux->relocations[i].type, sizeof(enum bpf_relocation_type)))
+        //   return -ENOMEM;
+        //if(copy_to_user(output + position + sizeof(u32) + sizeof(enum bpf_relocation_type), prog->aux->relocations[i].symbol, KSYM_NAME_LEN))
+        //   return -ENOMEM;
 
         position = position + sizeof(struct bpf_relocation);
     }
@@ -2983,7 +2985,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
     u32 length = 0;
     length += prog->jited_len;
     /* Extra 4 bytes to signal end of offsets */
-    length += prog->aux->helper_offsets_size * (KSYM_NAME_LEN + sizeof(u32));
+    length += prog->aux->relocation_size * sizeof(struct bpf_relocation);
     put_user(length, (__u32 *)attr->extract_len);
     printk(KERN_INFO "Length of the program with relocation info is %d", length);                                                               
 	return err;

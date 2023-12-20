@@ -1121,7 +1121,7 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
                         if (bpf_prog->aux->relocations) {
                             bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
                             bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
-                            strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, "testmap", KSYM_NAME_LEN);
+                            strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, map->name, KSYM_NAME_LEN);
                             bpf_prog->aux->relocation_size++;
                             relocation_idx++;
                         } 

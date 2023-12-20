@@ -16290,6 +16290,7 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 			f = fdget(fd);
 			map = __bpf_map_get(f);
             printk(KERN_INFO "Map name is %s\n", map->name);
+            printk(KERN_INFO "src reg is %d", insn[0].src_reg);
             //strncpy(insn->map_name, map->name, BPF_OBJ_NAME_LEN);
 			if (IS_ERR(map)) {
 				verbose(env, "fd %d is not pointing to valid bpf_map\n",
@@ -16308,31 +16309,35 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 			    insn[0].src_reg == BPF_PSEUDO_MAP_IDX) {
 				addr = (unsigned long)map;
 			} else {
-				u32 off = insn[1].imm;
+                addr = (unsigned long)map;
+            }
+            // We need to keep track of the offset ?
+        //    else {
+		//		u32 off = insn[1].imm;
 
-				if (off >= BPF_MAX_VAR_OFF) {
-					verbose(env, "direct value offset of %u is not allowed\n", off);
-					fdput(f);
-					return -EINVAL;
-				}
+		//		if (off >= BPF_MAX_VAR_OFF) {
+		//			verbose(env, "direct value offset of %u is not allowed\n", off);
+		//			fdput(f);
+		//			return -EINVAL;
+		//		}
 
-				if (!map->ops->map_direct_value_addr) {
-					verbose(env, "no direct value access support for this map type\n");
-					fdput(f);
-					return -EINVAL;
-				}
+		//		if (!map->ops->map_direct_value_addr) {
+		//			verbose(env, "no direct value access support for this map type\n");
+		//			fdput(f);
+		//			return -EINVAL;
+		//		}
 
-				err = map->ops->map_direct_value_addr(map, &addr, off);
-				if (err) {
-					verbose(env, "invalid access to map value pointer, value_size=%u off=%u\n",
-						map->value_size, off);
-					fdput(f);
-					return err;
-				}
+		//		err = map->ops->map_direct_value_addr(map, &addr, off);
+		//		if (err) {
+		//			verbose(env, "invalid access to map value pointer, value_size=%u off=%u\n",
+		//				map->value_size, off);
+		//			fdput(f);
+		//			return err;
+		//		}
 
-				aux->map_off = off;
-				addr += off;
-			}
+		//		aux->map_off = off;
+		//		addr += off;
+		//	}
             
             // Replace with F's to see
             //insn[0].imm = 0xFFFFFFFF;
