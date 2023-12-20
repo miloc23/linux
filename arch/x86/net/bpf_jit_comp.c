@@ -1104,11 +1104,33 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 			emit_mov_imm32(&prog, BPF_CLASS(insn->code) == BPF_ALU64,
 				       dst_reg, imm32);
 			break;
-
+            
+            /* 64-bit immediate loads */
 		case BPF_LD | BPF_IMM | BPF_DW:
 			emit_mov_imm64(&prog, dst_reg, insn[1].imm, insn[0].imm);
-			insn++;
-			i++;
+            printk(KERN_INFO "Src reg is %d", insn[0].src_reg);
+            switch (insn[0].src_reg) {
+                case BPF_PSEUDO_MAP_VALUE:
+                case BPF_PSEUDO_MAP_FD:
+                case BPF_PSEUDO_MAP_IDX:
+                case BPF_PSEUDO_MAP_IDX_VALUE:
+                    u64 map_ptr = (((u64)insn[1].imm) << 32) | (u64)insn[0].imm;
+                    if (map_ptr > 0) {
+                        struct bpf_map * map = (struct bpf_map *)map_ptr;
+                        printk(KERN_INFO "in jit map name is %s", map->name);
+                        if (bpf_prog->aux->relocations) {
+                            bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
+                            bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
+                            strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, "testmap", KSYM_NAME_LEN);
+                            bpf_prog->aux->relocation_size++;
+                            relocation_idx++;
+                        } 
+                    }
+                    fallthrough;
+                default:
+			    insn++;
+		    	i++;
+            }
 			break;
 
 			/* dst %= src, dst /= src, dst %= imm32, dst /= imm32 */
@@ -1382,17 +1404,6 @@ st:			if (is_imm8(insn->off))
 		case BPF_LDX | BPF_PROBE_MEM | BPF_DW:
 			insn_off = insn->off;
 
-            // in a pseudo load *I think*
-            if (insn->code == (BPF_IMM | BPF_DW | BPF_LD)) {
-                printk(KERN_INFO "Pseudo Load in JIT");
-                if (bpf_prog->aux->relocations) {
-                   bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
-                   bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
-                   strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, "testmap", KSYM_NAME_LEN);
-                   bpf_prog->aux->relocation_size++;
-                   relocation_idx++;
-                } 
-            }
                 
                     // This is our offset? image + addrs[i - 1]
 			if (BPF_MODE(insn->code) == BPF_PROBE_MEM) {

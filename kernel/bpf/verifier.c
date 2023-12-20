@@ -16418,7 +16418,7 @@ static void convert_pseudo_ld_imm64(struct bpf_verifier_env *env)
 			continue;
 		if (insn->src_reg == BPF_PSEUDO_FUNC)
 			continue;
-		insn->src_reg = 0;
+		//insn->src_reg = 0;
 	}
 }
 
