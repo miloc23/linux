@@ -1004,8 +1004,9 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	addrs[0] = proglen;
 	prog = temp;
 
-    bpf_prog->aux->helper_offsets_size = 0;
-
+    //bpf_prog->aux->helper_offsets_size = 0;
+    bpf_prog->aux->relocation_size = 0; // reset size before each iteration.
+    
 	for (i = 1; i <= insn_cnt; i++, insn++) {
 		const s32 imm32 = insn->imm;
 		u32 dst_reg = insn->dst_reg;
