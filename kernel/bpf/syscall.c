@@ -2518,12 +2518,19 @@ static int bpf_prog_extract(union bpf_attr *attr)
 
     printk(KERN_INFO "Relocation size is %d\n", prog->aux->relocation_size);
 
-    relocation_len = prog->aux->helper_offsets_size * sizeof(struct bpf_relocation);
+
+    relocation_len = sizeof(u32) + (prog->aux->helper_offsets_size * sizeof(struct bpf_relocation));
 
     if (relocation_len + prog->jited_len > attr->output_ptr_len)
         return -1;
 
     int position = 0;
+    // output the number of relocations
+    if (copy_to_user(output + position, &prog->aux->relocation_size, sizeof(u32)))
+            return -ENOMEM;
+
+    position += sizeof(u32);
+
     for (int i = 0; i < prog->aux->relocation_size; i++) {
         if (copy_to_user(output + position, &prog->aux->relocations[i], sizeof(struct bpf_relocation)))
             return -ENOMEM;
@@ -2985,7 +2992,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
     u32 length = 0;
     length += prog->jited_len;
     /* Extra 4 bytes to signal end of offsets */
-    length += prog->aux->relocation_size * sizeof(struct bpf_relocation);
+    length += sizeof(u32) + (prog->aux->relocation_size * sizeof(struct bpf_relocation)); // adjust to hold number of relocs
     put_user(length, (__u32 *)attr->extract_len);
     printk(KERN_INFO "Length of the program with relocation info is %d", length);                                                               
 	return err;

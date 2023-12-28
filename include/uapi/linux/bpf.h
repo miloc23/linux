@@ -1446,6 +1446,8 @@ union bpf_attr {
     struct { /* anonymous struct used by the BPF_PROG_LOAD_VERIFIED command */
         __aligned_u64 blob;
         __u64 blob_len;
+        __aligned_u64 relocations;
+        __u64 relocations_length;
         enum bpf_prog_type blob_prog_type; /* prog_type needed for verifier_ops */
     }; 
 
