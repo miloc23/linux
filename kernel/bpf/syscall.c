@@ -2625,13 +2625,14 @@ extern void * bpf_map_get_kern(const char *pathname, int flags);
 static int bpf_prog_load_verified(union bpf_attr *attr)
 {
     struct bpf_prog *prog;
-    u8 *data;
+    u8 *text;
     u8 *jit_prog;
     u32 begin = 0;
     u32 blob_len;
     struct bpf_verifier_env* env;
     int err;
 	const struct bpf_func_proto *fn;
+    struct bpf_relocation * relocations;
     u8 arr[15];
 
     //void * pt = bpf_obj_get_kern("/sys/fs/bpf/map1", 0);
@@ -2654,17 +2655,28 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     if (!attr->blob)
         return -EINVAL;
 
-    data = kzalloc(attr->blob_len, GFP_KERNEL);
-    if (!data)
+    if (attr->relocations_length != 0 && !attr->relocations)
+        return -EINVAL;
+
+    // Allocate memory for the program blob
+    text = kzalloc(attr->blob_len, GFP_KERNEL);
+    if (!text)
+        return -EINVAL;
+
+    // Allocate memory for the relocations 
+    relocations = kzalloc(attr->relocations_length * sizeof(struct bpf_relocation), GFP_KERNEL);
+
+    if (!relocations)
         return -EINVAL;
 
     //printk(KERN_INFO "Arr is at addr %px", arr);
 
-    copy_from_user(data, (void *)attr->blob, attr->blob_len);
+    copy_from_user(text, (void *)attr->blob, attr->blob_len);
+    copy_from_user(relocations, (void *)attr->relocations, attr->relocations_length);
 
-    begin = bpf_blob_find_begin(data);
+    //begin = bpf_blob_find_begin(text);
 
-    blob_len = attr->blob_len - (sizeof(u32) * begin);
+    blob_len = attr->blob_len;
 
     /* This doesn't work. Need to use the bpf_jit_binary_pack_alloc and finalize */
     //jit_prog = kzalloc(blob_len , GFP_KERNEL);
@@ -2679,10 +2691,10 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
    ro_header = bpf_jit_binary_pack_alloc(blob_len, &image, align, &rw_header, &rw_image, x86_jit_fill_hole);
 
 
-    char * str = kzalloc(13, GFP_KERNEL);
-    strncpy(str, "Hello World\n", 12);
-    str[12] = '\0';
-    printk(KERN_INFO "Str is %s at addr %px", str, str);
+    //char * str = kzalloc(13, GFP_KERNEL);
+    //strncpy(str, "Hello World\n", 12);
+    //str[12] = '\0';
+    //printk(KERN_INFO "Str is %s at addr %px", str, str);
     
 
 
@@ -2694,47 +2706,67 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 
     printk(KERN_INFO "BPF PROGRAM AT ADDR %px", image);
 
-    u32 *offset = (u32*) data;
-    u32 imm = 0;
-    for (int i = 0; i < begin - 1; i++) {
-        u32 off = *(offset+i);
-        
-        imm = *(data+(begin*4)+off+1);
-
-		//fn = env->ops->get_func_proto(imm, &a);
-        
-        //printk(KERN_INFO "Func id %s", func_id_name(imm));
-        unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
-        
-        printk(KERN_INFO "Helper func at addr %lx and offset in prog is %lu", addr, off);
-        //printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
-
-        //u64 relative = 0xffffffff811b1f41;
-        u64 relative;
-        
-        /* This 5 is arch specific */
-        relative = addr - (__aligned_u64)image - off - 5;
-        printk(KERN_INFO "Relative is %lx", relative);
-        //*(data+(begin*4)+off+1) = relative;
-        memcpy(data+(begin*4)+off+1, &relative, 4);
-
-        //bpf_prog_fixup_call_x86();
-        //*(data+(begin*4)+off+1) = relative ;
-        //*(data+(begin*4)+off+2) = 0xb;
-        //*(data+(begin*4)+off+3) = 0xc;
-        //*(data+(begin*4)+off+4) = 0xd;
+    
+    // perform the relocations
+    struct bpf_relocation * reloc = relocations;
+    for (int i = 0; i < attr->relocations_length; i++) {
+        reloc = relocations + i;
+        if (reloc->type == R_PROG) {
+            printk(KERN_INFO "Relocating fn %s", reloc->symbol);
+            unsigned long addr = kallsyms_lookup_name(reloc->symbol);
+            /* This 5 is arch specific */
+            u64 relative = addr - (__aligned_u64)image - reloc->offset - 5;
+            memcpy(text+(reloc->offset)+1, &relative, 4);
+        }
+        else if (reloc->type == R_MAP) {
+            printk(KERN_INFO "Not Imp: Relocating map %s", reloc->symbol);
+            // relocate the map access
+        }
     }
 
-    memcpy(data+21, &str, 8);
 
-    memcpy(rw_image, (data+(begin*sizeof(u32))), blob_len);
+   
+    //u32 *offset = (u32*) text;
+    //u32 imm = 0;
+    //for (int i = 0; i < begin - 1; i++) {
+    //    u32 off = *(offset+i);
+    //    
+    //    imm = *(text+(begin*4)+off+1);
+
+	//	//fn = env->ops->get_func_proto(imm, &a);
+    //    
+    //    //printk(KERN_INFO "Func id %s", func_id_name(imm));
+    //    unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
+    //    
+    //    printk(KERN_INFO "Helper func at addr %lx and offset in prog is %lu", addr, off);
+    //    //printk(KERN_INFO "imm is %u off is %u fn is", imm, off);
+
+    //    //u64 relative = 0xffffffff811b1f41;
+    //    u64 relative;
+    //    
+    //    /* This 5 is arch specific */
+    //    relative = addr - (__aligned_u64)image - off - 5;
+    //    printk(KERN_INFO "Relative is %lx", relative);
+    //    //*(data+(begin*4)+off+1) = relative;
+    //    memcpy(text+(begin*4)+off+1, &relative, 4);
+
+    //    //bpf_prog_fixup_call_x86();
+    //    //*(data+(begin*4)+off+1) = relative ;
+    //    //*(data+(begin*4)+off+2) = 0xb;
+    //    //*(data+(begin*4)+off+3) = 0xc;
+    //    //*(data+(begin*4)+off+4) = 0xd;
+    //}
+
+    //memcpy(text+21, &str, 8);
+
+    memcpy(rw_image, text, blob_len);
     prog = bpf_prog_alloc(bpf_prog_size(0), GFP_KERNEL);
     bpf_jit_binary_pack_finalize(prog, ro_header, rw_header);
     //*jit_prog = *(data+(begin*sizeof(u32)));
 
-    for (int i = 0; i < blob_len; i++) {
+    //for (int i = 0; i < blob_len; i++) {
         //printk(KERN_INFO "%x ", *(image + i));
-    }
+    //}
 
     /* Allocate the program. Size is 0 bc we don't keep the BPF insns? */
 
@@ -2749,14 +2781,18 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     prog->expected_attach_type = BPF_TRACE_FENTRY;
 
 	err = find_prog_type(attr->blob_prog_type, prog);
-    if (err < 0) 
+    if (err < 0) {
+        printk(KERN_INFO "failed at find prog type\n");        
         return -1;
+    }
 
     
     
     err = bpf_prog_alloc_id(prog);
-    if (err < 0)
+    if (err < 0) {
+        printk(KERN_INFO "failed at alloc id\n");        
         return -1;
+    }
     
     prog->aux->load_time = 1;
 
@@ -2768,8 +2804,10 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     //bpf_audit_prog(prog, BPF_AUDIT_LOAD);
 
     err = bpf_prog_new_fd(prog);
-    if (err < 0)
+    if (err < 0) {
+        printk(KERN_INFO "failed at prog new fd\n");        
         return -1;
+    }
 
     struct bpf_prog *loaded = bpf_prog_get(err);
     //printk(KERN_INFO "loaded is %px", loaded);
@@ -5473,6 +5511,7 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
         break;
     case BPF_PROG_LOAD_VERIFIED:
         err = bpf_prog_load_verified(&attr);
+        printk(KERN_INFO "Result of the call is %d\n", err);
         break;
     case BPF_TEST_MAP:
         bpf_test_map();
