@@ -2672,7 +2672,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     //printk(KERN_INFO "Arr is at addr %px", arr);
 
     copy_from_user(text, (void *)attr->blob, attr->blob_len);
-    copy_from_user(relocations, (void *)attr->relocations, attr->relocations_length);
+    copy_from_user(relocations, (void *)attr->relocations, attr->relocations_length * sizeof(struct bpf_relocation));
 
     //begin = bpf_blob_find_begin(text);
 
@@ -2712,14 +2712,32 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     for (int i = 0; i < attr->relocations_length; i++) {
         reloc = relocations + i;
         if (reloc->type == R_PROG) {
-            printk(KERN_INFO "Relocating fn %s", reloc->symbol);
+            printk(KERN_INFO "Relocating fn %s\n", reloc->symbol);
             unsigned long addr = kallsyms_lookup_name(reloc->symbol);
-            /* This 5 is arch specific */
-            u64 relative = addr - (__aligned_u64)image - reloc->offset - 5;
-            memcpy(text+(reloc->offset)+1, &relative, 4);
+            if (addr == 0) {
+                printk(KERN_INFO "Failed to lookup name\n");
+            }
+            else {
+                /* This 5 is arch specific */
+                u64 relative = addr - (__aligned_u64)image - reloc->offset - 5;
+                memcpy(text+(reloc->offset)+1, &relative, 4);
+            }
         }
         else if (reloc->type == R_MAP) {
-            printk(KERN_INFO "Not Imp: Relocating map %s", reloc->symbol);
+            //unsigned long map_addr = 0xffffffffffffffff;
+            char path[PATH_MAX] = "/sys/fs/bpf/";
+            strncat(path, reloc->symbol, PATH_MAX - strlen(path));
+            void * map_addr = bpf_map_get_kern(path, 0);
+            if (IS_ERR(map_addr)) {
+                printk(KERN_INFO "Could not resolve map\n");
+                continue;
+            }
+            else {
+                unsigned long addr = (unsigned long)map_addr;
+            // need to actually resolve this
+                memcpy(text+(reloc->offset)+2, &addr, 8);
+            }
+            //printk(KERN_INFO "Not Imp: Relocating map %s", reloc->symbol);
             // relocate the map access
         }
     }

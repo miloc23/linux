@@ -610,8 +610,10 @@ void * bpf_map_get_kern(const char *pathname, int flags)
 
 	if (ret < 0)
 		bpf_any_put(raw, type);
-    if (type == BPF_TYPE_MAP) 
+    if (type == BPF_TYPE_MAP) {
+        printk(KERN_INFO "map %s is at addr %llx\n", pathname, raw);
         return raw;
+        } 
     else 
         return ERR_PTR(-1);
 }
