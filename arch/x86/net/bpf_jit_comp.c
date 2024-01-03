@@ -1595,11 +1595,15 @@ st:			if (is_imm8(insn->off))
             printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);
             // Does not support kfunc
             if (bpf_prog->aux->relocations) {
+               char * symname = kzalloc(KSYM_NAME_LEN, GFP_KERNEL);
+               lookup_symbol_name(func, symname);
+               printk(KERN_INFO "Function imm is %llx with name %s\n", func, symname); 
                bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1] + offs;
                bpf_prog->aux->relocations[relocation_idx].type = R_PROG;
-               strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, func_id_name(insn_off), KSYM_NAME_LEN);
+               strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, symname, KSYM_NAME_LEN);
                bpf_prog->aux->relocation_size++;
                relocation_idx++;
+               kfree(symname);
             } 
             //if (bpf_prog->aux->helper_offsets) {
             //    bpf_prog->aux->helper_offsets[helper_offset_idx].offset = addrs[i-1] + offs;
