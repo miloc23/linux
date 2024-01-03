@@ -2635,6 +2635,9 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     struct bpf_relocation * relocations;
     u8 arr[15];
 
+    printk(KERN_INFO "Init bpf random\n");
+	bpf_user_rnd_init_once();
+
     //void * pt = bpf_obj_get_kern("/sys/fs/bpf/map1", 0);
     //struct bpf_map * map = (struct bpf_map *)pt;
 
@@ -2725,7 +2728,8 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         }
         else if (reloc->type == R_MAP) {
             //unsigned long map_addr = 0xffffffffffffffff;
-            char path[PATH_MAX] = "/sys/fs/bpf/";
+            char * path = kzalloc(PATH_MAX, GFP_KERNEL);
+            *path = "/sys/fs/bpf/";
             strncat(path, reloc->symbol, PATH_MAX - strlen(path));
             void * map_addr = bpf_map_get_kern(path, 0);
             if (IS_ERR(map_addr)) {
@@ -2739,6 +2743,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
             }
             //printk(KERN_INFO "Not Imp: Relocating map %s", reloc->symbol);
             // relocate the map access
+            kfree(path);
         }
     }
 
@@ -2791,7 +2796,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     /* set the function to jited code */
 //unsigned int (*)(const void *, const struct bpf_insn *)
     prog->bpf_func = (unsigned int (*)(const void*, const struct bpf_insn *))image;
-    //printk(KERN_INFO "Jitted_prog is at addr: %px", image);
+    printk(KERN_INFO "Jitted_prog is at addr: %px\n", image);
 
     prog->jited = 1;
     prog->type = attr->blob_prog_type;
