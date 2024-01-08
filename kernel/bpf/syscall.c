@@ -2634,6 +2634,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
 	const struct bpf_func_proto *fn;
     struct bpf_relocation * relocations;
     u8 arr[15];
+    char name[BPF_OBJ_NAME_LEN];
 
     printk(KERN_INFO "Init bpf random\n");
 	bpf_user_rnd_init_once();
@@ -2661,6 +2662,8 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     if (attr->relocations_length != 0 && !attr->relocations)
         return -EINVAL;
 
+    printk(KERN_INFO "Prog name (in attr) is %s\n", attr->blob_name);
+    
     // Allocate memory for the program blob
     text = kzalloc(attr->blob_len, GFP_KERNEL);
     if (!text)
@@ -2729,8 +2732,10 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
         else if (reloc->type == R_MAP) {
             //unsigned long map_addr = 0xffffffffffffffff;
             char * path = kzalloc(PATH_MAX, GFP_KERNEL);
-            *path = "/sys/fs/bpf/";
-            strncat(path, reloc->symbol, PATH_MAX - strlen(path));
+            snprintf(path, PATH_MAX, "/sys/fs/bpf/%s/%s", attr->blob_name, reloc->symbol);
+            printk(KERN_INFO "Map path is %s\n", path);
+//            *path = "/sys/fs/bpf/";
+//            strncat(path, reloc->symbol, PATH_MAX - strlen(path));
             void * map_addr = bpf_map_get_kern(path, 0);
             if (IS_ERR(map_addr)) {
                 printk(KERN_INFO "Could not resolve map\n");

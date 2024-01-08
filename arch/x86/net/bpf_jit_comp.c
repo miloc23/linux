@@ -1589,7 +1589,8 @@ st:			if (is_imm8(insn->off))
              * We store this in offset to make the call_depth work  */
             insn_off = insn->off;
             //printk(KERN_INFO "Offset is %d", insn_off);
-            helper_id = (u64)insn->off;
+            helper_id = (u64)insn->off; // May not need this
+            //helper_id = 0;
 			if (emit_call(&prog, &helper_id, image + addrs[i - 1] + offs))
 				return -EINVAL;
             printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);

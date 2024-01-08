@@ -11,6 +11,10 @@
 #include <linux/types.h>
 #include <linux/bpf_common.h>
 
+// Maybe we should pull in the header file?
+//#include <linux/kallsyms.h>
+#define KSYM_NAME_LEN 512
+
 /* Extended instruction set based on top of classic BPF */
 
 /* instruction classes */
@@ -74,6 +78,7 @@ struct bpf_insn {
 	__u8	src_reg:4;	/* source register */
 	__s16	off;		/* signed offset */
 	__s32	imm;		/* signed immediate constant */
+//    char map_name[BPF_OBJ_NAME_LEN]; // This  is for map names - hacky
 };
 
 /* Key of an a BPF_MAP_TYPE_LPM_TRIE entry */
@@ -854,6 +859,10 @@ union bpf_iter_link_info {
  *	 Return
  *	    Returns zero on success. On error, -1 is returned.
  *
+ *	BPF_TEST_MAP
+ *	 Description
+ *	    Syscall to help test map getting imp
+ *
  * NOTES
  *	eBPF objects (maps and programs) can be shared between processes.
  *
@@ -910,6 +919,7 @@ enum bpf_cmd {
 	BPF_PROG_BIND_MAP,
     BPF_PROG_EXTRACT,
     BPF_PROG_LOAD_VERIFIED,
+    BPF_TEST_MAP,
 };
 
 enum bpf_map_type {
@@ -1436,6 +1446,9 @@ union bpf_attr {
     struct { /* anonymous struct used by the BPF_PROG_LOAD_VERIFIED command */
         __aligned_u64 blob;
         __u64 blob_len;
+        __aligned_u64 relocations;
+        __u64 relocations_length;
+		char blob_name[BPF_OBJ_NAME_LEN];
         enum bpf_prog_type blob_prog_type; /* prog_type needed for verifier_ops */
     }; 
 
@@ -7192,4 +7205,19 @@ struct bpf_iter_num {
 	__u64 __opaque[1];
 } __attribute__((aligned(8)));
 
+/*
+ * Enum for the type of relocation
+ */
+enum bpf_relocation_type {
+    R_PROG,
+    R_MAP,
+};
+/*
+ * Struct for relocations for linking
+ */
+struct bpf_relocation {
+    enum bpf_relocation_type type;
+    __u32 offset;
+    char symbol[KSYM_NAME_LEN];
+};
 #endif /* _UAPI__LINUX_BPF_H__ */

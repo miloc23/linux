@@ -1448,6 +1448,7 @@ union bpf_attr {
         __u64 blob_len;
         __aligned_u64 relocations;
         __u64 relocations_length;
+		char blob_name[BPF_OBJ_NAME_LEN];
         enum bpf_prog_type blob_prog_type; /* prog_type needed for verifier_ops */
     }; 
 
