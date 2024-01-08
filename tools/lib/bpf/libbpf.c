@@ -8174,7 +8174,13 @@ int bpf_object__pin_maps(struct bpf_object *obj, const char *path)
 			continue;
 
 		if (path) {
-			err = pathname_concat(buf, sizeof(buf), path, bpf_map__name(map));
+            if(bpf_map__is_internal(map)) {
+                printf("Real name is %s and name is %s and bpf_map__name is %s\n", map->real_name, map->name, bpf_map__name(map));
+                err = pathname_concat(buf, sizeof(buf), path, map->real_name);
+            }
+            else {
+			    err = pathname_concat(buf, sizeof(buf), path, bpf_map__name(map));
+            }
 			if (err)
 				goto err_unpin_maps;
 			sanitize_pin_path(buf);
@@ -12932,11 +12938,12 @@ int bpf_object__load_verified(struct bpf_object * obj)
     union bpf_attr attr;
     struct bpf_program * prog = obj->programs;
     pr_info("Prog name is %s\n", prog->name);
+    pr_info("Object name is %s\n", obj->name);
 
     path = calloc(1, PATH_MAX);
     snprintf(path, PATH_MAX, "/sys/fs/bpf/%s", prog->name);
     
-    strncpy(attr.blob_name, prog->name, BPF_OBJ_NAME_LEN - 1);
+    memcpy(attr.blob_name, prog->name, BPF_OBJ_NAME_LEN);
 
     bpf_object__create_maps(obj);
     obj->loaded = true;

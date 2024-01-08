@@ -1118,11 +1118,27 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
                     u64 map_ptr = (((u64)insn[1].imm) << 32) | (u64)insn[0].imm;
                     if (map_ptr > 0) {
                         struct bpf_map * map = (struct bpf_map *)map_ptr;
-                        printk(KERN_INFO "in jit map name is %s", map->name);
                         if (bpf_prog->aux->relocations) {
                             bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
                             bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
-                            strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, map->name, KSYM_NAME_LEN);
+
+                            char * str = strstr(map->name, ".");
+                            if (str == NULL) {
+                                printk(KERN_INFO "in jit map name is %s", map->name);
+                                strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, map->name, KSYM_NAME_LEN);
+                            }
+                            else {
+                                //char * ptr = str;
+                                //// Change . to _ because BPFFS disallows periods
+                                //while (*ptr) {
+                                //    if (*ptr == '.') {
+                                //        *ptr = '_';
+                                //    }
+                                //    ptr++;
+                                //}
+                                printk(KERN_INFO "in jit map name is %s", str+1);
+                                strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, str+1, KSYM_NAME_LEN);
+                            }
                             bpf_prog->aux->relocation_size++;
                             relocation_idx++;
                         } 

@@ -1169,6 +1169,8 @@ static int map_create(union bpf_attr *attr)
 	if (err < 0)
 		goto free_map;
 
+    printk(KERN_INFO "Map name is %s\n", map->name);
+
 	atomic64_set(&map->refcnt, 1);
 	atomic64_set(&map->usercnt, 1);
 	mutex_init(&map->freeze_mutex);
