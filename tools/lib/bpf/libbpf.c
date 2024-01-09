@@ -8174,13 +8174,7 @@ int bpf_object__pin_maps(struct bpf_object *obj, const char *path)
 			continue;
 
 		if (path) {
-            if(bpf_map__is_internal(map)) {
-                printf("Real name is %s and name is %s and bpf_map__name is %s\n", map->real_name, map->name, bpf_map__name(map));
-                err = pathname_concat(buf, sizeof(buf), path, map->real_name);
-            }
-            else {
-			    err = pathname_concat(buf, sizeof(buf), path, bpf_map__name(map));
-            }
+			err = pathname_concat(buf, sizeof(buf), path, bpf_map__name(map));
 			if (err)
 				goto err_unpin_maps;
 			sanitize_pin_path(buf);
@@ -12838,6 +12832,54 @@ void bpf_object__set_extract_len(struct bpf_object *obj, __u64 *len)
     obj->extract_len = (__aligned_u64)len;
 }
 
+// Special behavior for pinning maps when the program is pre-verified
+static int bpf_object__pin_maps_verified(struct bpf_object *obj, const char *path)
+{
+	struct bpf_map *map;
+	int err;
+
+	if (!obj)
+		return libbpf_err(-ENOENT);
+
+	bpf_object__for_each_map(map, obj) {
+		char *pin_path = NULL;
+		char buf[PATH_MAX];
+
+		if (!map->autocreate)
+			continue;
+
+		if (path) {
+            if (bpf_map__is_internal(map)) {
+                err = pathname_concat(buf, sizeof(buf), path, map->real_name + 1); // +1 to remove .
+            } else {
+			    err = pathname_concat(buf, sizeof(buf), path, bpf_map__name(map));
+            }
+			if (err)
+				goto err_unpin_maps;
+			sanitize_pin_path(buf);
+			pin_path = buf;
+		} else if (!map->pin_path) {
+			continue;
+		}
+
+		err = bpf_map__pin(map, pin_path);
+		if (err)
+			goto err_unpin_maps;
+	}
+
+	return 0;
+
+err_unpin_maps:
+	while ((map = bpf_object__prev_map(obj, map))) {
+		if (!map->pin_path)
+			continue;
+
+		bpf_map__unpin(map, NULL);
+	}
+
+	return libbpf_err(err);
+}
+
 /* Pathway for loading pre-verified bpf programs */
 struct bpf_object * bpf_object__open_verified(const char * path)
 {
@@ -12946,8 +12988,7 @@ int bpf_object__load_verified(struct bpf_object * obj)
     memcpy(attr.blob_name, prog->name, BPF_OBJ_NAME_LEN);
 
     bpf_object__create_maps(obj);
-    obj->loaded = true;
-    bpf_object__pin_maps(obj, path); 
+    bpf_object__pin_maps_verified(obj, path); 
     
     attr.blob = (__aligned_u64)obj->verified.prog;
     attr.blob_len = obj->verified.prog_len;

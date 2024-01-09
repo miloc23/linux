@@ -2744,7 +2744,14 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
                 continue;
             }
             else {
-                unsigned long addr = (unsigned long)map_addr;
+                struct bpf_map * map = (struct bpf_map *)map_addr;
+                struct bpf_array * arr = container_of(map, struct bpf_array, map);
+                void * val = arr->value + ((u64)arr->elem_size * (0 & arr->index_mask));
+                printk(KERN_INFO "Map addr %px and string addr %px\n", map, val);
+                char * st = (char *)val;
+                printk(KERN_INFO "String is %s\n", st);
+//                unsigned long addr = (unsigned long)map_addr + (sizeof(struct bpf_map) + 16);
+                unsigned long addr = (unsigned long)val;                
             // need to actually resolve this
                 memcpy(text+(reloc->offset)+2, &addr, 8);
             }
