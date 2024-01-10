@@ -7218,6 +7218,7 @@ enum bpf_relocation_type {
 struct bpf_relocation {
     enum bpf_relocation_type type;
     __u32 offset;
+    __u32 access_off;
     char symbol[KSYM_NAME_LEN];
 };
 #endif /* _UAPI__LINUX_BPF_H__ */

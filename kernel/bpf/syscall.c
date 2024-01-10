@@ -2746,7 +2746,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
             else {
                 struct bpf_map * map = (struct bpf_map *)map_addr;
                 struct bpf_array * arr = container_of(map, struct bpf_array, map);
-                void * val = arr->value + ((u64)arr->elem_size * (0 & arr->index_mask));
+                void * val = arr->value + reloc->access_off +  ((u64)arr->elem_size * (0 & arr->index_mask));
                 printk(KERN_INFO "Map addr %px and string addr %px\n", map, val);
                 char * st = (char *)val;
                 printk(KERN_INFO "String is %s\n", st);
@@ -2988,6 +2988,8 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 
     // Allocate memory for relocations
     prog->aux->relocations = kzalloc(prog->len * sizeof(struct bpf_relocation), GFP_KERNEL);
+    prog->aux->access_offsets = kzalloc(prog->len * sizeof(u32), GFP_KERNEL);
+    prog->aux->nr_access_offsets = 0;
 
 	err = -EFAULT;
 	if (copy_from_bpfptr(prog->insns,

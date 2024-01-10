@@ -984,6 +984,7 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	int err;
     int helper_offset_idx = 0;
     int relocation_idx = 0;
+    int offset_idx = 0;
 
     printk(KERN_INFO "Jitting prog %s", bpf_prog->aux->name);
 	detect_reg_usage(insn, insn_cnt, callee_regs_used,
@@ -1119,8 +1120,19 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
                     if (map_ptr > 0) {
                         struct bpf_map * map = (struct bpf_map *)map_ptr;
                         if (bpf_prog->aux->relocations) {
+                            u32 access = 0;
+                            if (offset_idx < bpf_prog->aux->nr_access_offsets) {
+                                    printk(KERN_INFO "num: %u val is %u\n", bpf_prog->aux->nr_access_offsets, bpf_prog->aux->access_offsets[offset_idx]);
+                                    access = bpf_prog->aux->access_offsets[offset_idx];
+                                    offset_idx++;
+                            }
+                                //else {
+                                //    return -1;
+                                //}
                             bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
                             bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
+                            printk(KERN_INFO "Access is %u\n", access);
+                            bpf_prog->aux->relocations[relocation_idx].access_off = access;
 
                             char * str = strstr(map->name, ".");
                             if (str == NULL) {

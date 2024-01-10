@@ -16309,6 +16309,13 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 			    insn[0].src_reg == BPF_PSEUDO_MAP_IDX) {
 				addr = (unsigned long)map;
 			} else {
+                u32 off = insn[1].imm;
+                // Save the offset in the internal map in the offsets of the instructions?
+                env->prog->aux->access_offsets[env->prog->aux->nr_access_offsets] = off;
+                printk(KERN_INFO "In Verifier offset is %u val is %u access_off is %u\n", off, env->prog->aux->access_offsets[env->prog->aux->nr_access_offsets], env->prog->aux->nr_access_offsets);
+                env->prog->aux->nr_access_offsets++;
+                //insn[0].off = (u16)addr;
+                //insn[1].off = addr >> 16;
                 addr = (unsigned long)map;
             }
             // We need to keep track of the offset ?
