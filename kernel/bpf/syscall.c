@@ -2988,6 +2988,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 
     // Allocate memory for relocations
     prog->aux->relocations = kzalloc(prog->len * sizeof(struct bpf_relocation), GFP_KERNEL);
+    prog->aux->map_relocs = kzalloc(prog->len * sizeof(struct bpf_relocation), GFP_KERNEL);
     prog->aux->access_offsets = kzalloc(prog->len * sizeof(u32), GFP_KERNEL);
     prog->aux->nr_access_offsets = 0;
 

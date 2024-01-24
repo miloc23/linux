@@ -1121,6 +1121,18 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
                         struct bpf_map * map = (struct bpf_map *)map_ptr;
                         if (bpf_prog->aux->relocations) {
                             u32 access = 0;
+                            //if (bpf_prog->aux->map_relocs) {
+                            //    printk(KERN_INFO "Looking for a matching insn %px\n", insn);
+                            //    for (int count = 0; count < bpf_prog->aux->nr_access_offsets; count++) {
+                            //        printk(KERN_INFO "got %px\n", bpf_prog->aux->map_relocs[count].insn);
+                            //        if (insn == bpf_prog->aux->map_relocs[count].insn) {
+                            //            printk(KERN_INFO "Found a matching instruction\n");
+                            //            access = bpf_prog->aux->map_relocs[bpf_prog->aux->nr_access_offsets].access_off;
+                            //            break;
+                            //        }
+                            //    }
+                            //}
+
                             if (offset_idx < bpf_prog->aux->nr_access_offsets) {
                                     printk(KERN_INFO "num: %u val is %u\n", bpf_prog->aux->nr_access_offsets, bpf_prog->aux->access_offsets[offset_idx]);
                                     access = bpf_prog->aux->access_offsets[offset_idx];
@@ -1129,6 +1141,8 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
                                 //else {
                                 //    return -1;
                                 //}
+                            bpf_prog->aux->relocations[relocation_idx].insn = insn;
+                            printk(KERN_INFO "Instruction %d at %px\n", relocation_idx, insn);
                             bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
                             bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
                             printk(KERN_INFO "Access is %u\n", access);

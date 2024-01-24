@@ -1455,6 +1455,7 @@ struct bpf_prog_aux {
     u32 * access_offsets;
     // Relocations for this bpf program
     struct bpf_relocation * relocations;
+    struct bpf_relocation * map_relocs;
     u32 relocation_size;
 };
 

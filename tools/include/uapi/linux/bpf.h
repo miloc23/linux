@@ -72,7 +72,12 @@ enum {
 /* BPF has 10 general purpose 64-bit registers and stack frame. */
 #define MAX_BPF_REG	__MAX_BPF_REG
 
+struct bpf_insn_aux {
+    char map_name[16];
+};
+
 struct bpf_insn {
+    //struct bpf_insn_aux * aux;
 	__u8	code;		/* opcode */
 	__u8	dst_reg:4;	/* dest register */
 	__u8	src_reg:4;	/* source register */
@@ -7220,5 +7225,6 @@ struct bpf_relocation {
     __u32 offset;
     __u32 access_off;
     char symbol[KSYM_NAME_LEN];
+    struct bpf_insn * insn; // Used to map between relocation and instruction?
 };
 #endif /* _UAPI__LINUX_BPF_H__ */
