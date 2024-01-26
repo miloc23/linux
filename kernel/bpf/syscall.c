@@ -2728,6 +2728,7 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
             else {
                 /* This 5 is arch specific */
                 u64 relative = addr - (__aligned_u64)image - reloc->offset - 5;
+                printk(KERN_INFO "Relative is %lu and function is at %lu\n", relative, addr);
                 memcpy(text+(reloc->offset)+1, &relative, 4);
             }
         }
@@ -2758,6 +2759,15 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
             //printk(KERN_INFO "Not Imp: Relocating map %s", reloc->symbol);
             // relocate the map access
             kfree(path);
+        }
+
+        // hack
+        else if (reloc->type == 3) {
+            char * st = kzalloc(13, GFP_KERNEL);
+            strcpy(st, "Hello World!");
+            printk(KERN_INFO "String dummy\n");
+            memcpy(text+(reloc->offset)+1, &st, 8);
+            // hello world reloc
         }
     }
 
