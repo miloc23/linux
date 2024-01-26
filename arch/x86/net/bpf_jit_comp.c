@@ -1138,9 +1138,9 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
                                     access = bpf_prog->aux->access_offsets[offset_idx];
                                     offset_idx++;
                             }
-                                //else {
-                                //    return -1;
-                                //}
+                            else {
+                                return -1;
+                            }
                             bpf_prog->aux->relocations[relocation_idx].insn = insn;
                             printk(KERN_INFO "Instruction %d at %px\n", relocation_idx, insn);
                             bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
