@@ -26,7 +26,6 @@ struct sock_filter {	/* Filter block */
 	__u8	jt;	/* Jump true */
 	__u8	jf;	/* Jump false */
 	__u32	k;      /* Generic multiuse field */
-    //__u64   pad; /* padding for size */
 };
 
 struct sock_fprog {	/* Required for SO_ATTACH_FILTER. */

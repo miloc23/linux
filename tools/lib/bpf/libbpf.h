@@ -201,10 +201,6 @@ LIBBPF_API struct bpf_object *bpf_object__open(const char *path);
  */
 LIBBPF_API void bpf_object__set_extract_len(struct bpf_object *obj, __u64 *extract_len);
 
-LIBBPF_API struct bpf_object * bpf_object__open_verified(const char * path);
-
-LIBBPF_API int bpf_object__load_verified(struct bpf_object *);
-
 /**
  * @brief **bpf_object__open_file()** creates a bpf_object by opening
  * the BPF ELF object file pointed to by the passed path and loading it

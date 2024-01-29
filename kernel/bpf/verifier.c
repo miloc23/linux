@@ -18015,9 +18015,6 @@ patch_call_imm:
 
     printk(KERN_INFO "There are %d helper calls", helper_calls);
     
-    // Now uses the bpf_helper_reloc struct
-    env->prog->aux->helper_offsets = (struct bpf_helper_reloc *)kcalloc(sizeof(struct bpf_helper_reloc), helper_calls, GFP_KERNEL);
-    
 
 	return 0;
 }
