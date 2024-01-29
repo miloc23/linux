@@ -1169,8 +1169,6 @@ static int map_create(union bpf_attr *attr)
 	if (err < 0)
 		goto free_map;
 
-    printk(KERN_INFO "Map name is %s\n", map->name);
-
 	atomic64_set(&map->refcnt, 1);
 	atomic64_set(&map->usercnt, 1);
 	mutex_init(&map->freeze_mutex);
@@ -2496,122 +2494,6 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 	}
 }
 
-/* last field in 'union bpf_attr' used by this command */
-#define BPF_PROG_EXTRACT_LAST_FIELD prog_fd 
-
-static int bpf_prog_extract(union bpf_attr *attr)
-{
-    void __user * output = (void __user *)attr->output_ptr;
-    u64 output_len = attr->output_ptr_len;
-    int prog_fd = attr->prog_fd;
-    int relocation_len;
-    u32 offset_end = 0U;
-    struct bpf_prog *prog;
-
-    printk(KERN_INFO "You hit the extract button!");
-    
-    if (!output) 
-        return -1;
-
-    prog = bpf_prog_get(prog_fd);
-
-    if(!prog)
-        return -1;
-
-    printk(KERN_INFO "Relocation size is %d\n", prog->aux->relocation_size);
-
-
-    relocation_len = sizeof(u32) + (prog->aux->helper_offsets_size * sizeof(struct bpf_relocation));
-
-    if (relocation_len + prog->jited_len > attr->output_ptr_len)
-        return -1;
-
-    int position = 0;
-    // output the number of relocations
-    if (copy_to_user(output + position, &prog->aux->relocation_size, sizeof(u32)))
-            return -ENOMEM;
-
-    position += sizeof(u32);
-
-    for (int i = 0; i < prog->aux->relocation_size; i++) {
-        if (copy_to_user(output + position, &prog->aux->relocations[i], sizeof(struct bpf_relocation)))
-            return -ENOMEM;
-        //if(copy_to_user(output + position, &prog->aux->relocations[i].offset, sizeof(u32)))
-        //   return -ENOMEM;
-        //if(copy_to_user(output + position + sizeof(u32), &prog->aux->relocations[i].type, sizeof(enum bpf_relocation_type)))
-        //   return -ENOMEM;
-        //if(copy_to_user(output + position + sizeof(u32) + sizeof(enum bpf_relocation_type), prog->aux->relocations[i].symbol, KSYM_NAME_LEN))
-        //   return -ENOMEM;
-
-        position = position + sizeof(struct bpf_relocation);
-    }
-    //char name[KSYM_NAME_LEN];
-    //int position = 0;
-    //for(int i = 0; i < prog->aux->helper_offsets_size; i++) {
-    //    printk(KERN_INFO "About to resolve to symbol!\n");
-
-    //    strncpy(name, func_id_name(prog->aux->helper_offsets[i].id), KSYM_NAME_LEN);
-    //    printk(KERN_INFO "Just found helper %s!\n", name);
-    //    if(copy_to_user(output + position, &prog->aux->helper_offsets[i].offset, sizeof(u32)))
-    //       return -ENOMEM;
-
-    //    if(copy_to_user(output + position + sizeof(u32), name, KSYM_NAME_LEN))
-    //        return -ENOMEM;
-    //    position = position + (sizeof(u32) + KSYM_NAME_LEN);
-    //}
-//        prog->aux->helper_offsets[i].name = func_id_name(prog->aux->helper_offsets[i].id);
-
-
-    //}    
-    
-    //if(copy_to_user(output, prog->aux->helper_offsets, helper_len))
-    //    return -ENOMEM;
-
-    /* An offset of 0 means end of offset section */
-    //if(copy_to_user(output+helper_len, &offset_end, 4))
-    //   return -ENOMEM;
-
-    //helper_len += sizeof(u32);
-
-    if(copy_to_user(output+position, prog->bpf_func, prog->jited_len))
-        return -ENOMEM;
-
-    printk(KERN_INFO "Extract Stub");
-    return 0;
-}
-
-static u32 bpf_blob_find_begin(u8 *data)
-{
-    u32 ret = 0;
-    u32 *offset = (u32*)data;
-    while (*offset != 0) {
-       ret++;
-       offset++;
-    }
-    /* All valid prog will have at least 4 bytes offset */
-    ret++;
-    return ret;
-}
-
-//bpf_prog_fixup_call_x86(u8 *jit_prog, u32 begin, u32 off, int func_id)
-//{
-//    unsigned long addr = kallsyms_lookup_name(func_id_name(imm));
-//    unsigned long prog_addr = jit_prog; 
-//    s32 relative;
-//
-//    relative = addr - (prog_addr + off);
-//    *(data+(begin*4)+off+1) = relative;
-//
-//    //prog_addr + off + call = addr
-//    //
-//    //addr - (prog_addr + off) = call
-//
-//    //*(data+(begin*4)+off+1) = 0xa;
-//    //*(data+(begin*4)+off+2) = 0xb;
-//    //*(data+(begin*4)+off+3) = 0xc;
-//    //*(data+(begin*4)+off+4) = 0xd;
-//}
-
 /* This is x86 arch specific jit_fill_hole for alloc
  * Copying this is a hack but I want to see if we can get it to work */
 static void x86_jit_fill_hole(void *area, unsigned int size)
@@ -2866,19 +2748,6 @@ static int bpf_prog_load_verified(union bpf_attr *attr)
     return err;
 }
 
-/* Testing function as a syscall
- */
-static void bpf_test_map(void)
-{
-    void * pt = bpf_map_get_kern("/sys/fs/bpf/map1", 0);
-    struct bpf_map * map = (struct bpf_map *)pt;
-
-    printk(KERN_INFO "Map name is %s", map->name);
-}
-
-
-         
-
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD log_true_size
 
@@ -2987,7 +2856,6 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 	prog->aux->dev_bound = !!attr->prog_ifindex;
 	prog->aux->sleepable = attr->prog_flags & BPF_F_SLEEPABLE;
 	prog->aux->xdp_has_frags = attr->prog_flags & BPF_F_XDP_HAS_FRAGS;
-    
 
 	err = security_bpf_prog_alloc(prog->aux);
 	if (err)
@@ -2996,21 +2864,12 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 	prog->aux->user = get_current_user();
 	prog->len = attr->insn_cnt;
 
-    // Allocate memory for relocations
-    prog->aux->relocations = kzalloc(prog->len * sizeof(struct bpf_relocation), GFP_KERNEL);
-    prog->aux->map_relocs = kzalloc(prog->len * sizeof(struct bpf_relocation), GFP_KERNEL);
-    prog->aux->access_offsets = kzalloc(prog->len * sizeof(u32), GFP_KERNEL);
-    prog->aux->nr_access_offsets = 0;
-
 	err = -EFAULT;
 	if (copy_from_bpfptr(prog->insns,
 			     make_bpfptr(attr->insns, uattr.is_kernel),
 			     bpf_prog_insn_size(prog)) != 0)
 		goto free_prog_sec;
 
-    //for (int i = 0; i < prog->len; i++) {
-    //    printk(KERN_INFO "insn %d op:%x src:%u dst:%u off:%d imm:%d", i, (prog->insnsi+i)->code, (prog->insnsi+i)->dst_reg, (prog->insnsi+i)->src_reg, (prog->insnsi+i)->off, (prog->insnsi+i)->imm);
-    //}
 	prog->orig_prog = NULL;
 	prog->jited = 0;
 
@@ -3076,13 +2935,6 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size)
 	if (err < 0)
 		bpf_prog_put(prog);
 
-    /* Copy the jited length + the offset length to user pointer */
-    u32 length = 0;
-    length += prog->jited_len;
-    /* Extra 4 bytes to signal end of offsets */
-    length += sizeof(u32) + (prog->aux->relocation_size * sizeof(struct bpf_relocation)); // adjust to hold number of relocs
-    put_user(length, (__u32 *)attr->extract_len);
-    printk(KERN_INFO "Length of the program with relocation info is %d", length);                                                               
 	return err;
 
 free_used_maps:
@@ -4750,8 +4602,6 @@ static int bpf_obj_get_info_by_fd(const union bpf_attr *attr,
 	if (!f.file)
 		return -EBADFD;
 
-    printk(KERN_INFO "bpf_fd op: %px", f.file->f_op);
-
 	if (f.file->f_op == &bpf_prog_fops)
 		err = bpf_prog_get_info_by_fd(f.file, f.file->private_data, attr,
 					      uattr);
@@ -5556,16 +5406,9 @@ static int __sys_bpf(int cmd, bpfptr_t uattr, unsigned int size)
 	case BPF_PROG_BIND_MAP:
 		err = bpf_prog_bind_map(&attr);
 		break;
-    case BPF_PROG_EXTRACT:
-        err = bpf_prog_extract(&attr);
-        break;
     case BPF_PROG_LOAD_VERIFIED:
         err = bpf_prog_load_verified(&attr);
         printk(KERN_INFO "Result of the call is %d\n", err);
-        break;
-    case BPF_TEST_MAP:
-        bpf_test_map();
-        err = 0;
         break;
 	default:
 		err = -EINVAL;

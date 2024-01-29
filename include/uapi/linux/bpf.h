@@ -72,18 +72,12 @@ enum {
 /* BPF has 10 general purpose 64-bit registers and stack frame. */
 #define MAX_BPF_REG	__MAX_BPF_REG
 
-struct bpf_insn_aux {
-    char map_name[16];
-};
-
 struct bpf_insn {
-    //struct bpf_insn_aux * aux;
 	__u8	code;		/* opcode */
 	__u8	dst_reg:4;	/* dest register */
 	__u8	src_reg:4;	/* source register */
 	__s16	off;		/* signed offset */
 	__s32	imm;		/* signed immediate constant */
-//    char map_name[BPF_OBJ_NAME_LEN]; // This  is for map names - hacky
 };
 
 /* Key of an a BPF_MAP_TYPE_LPM_TRIE entry */
@@ -856,18 +850,6 @@ union bpf_iter_link_info {
  *		Returns zero on success. On error, -1 is returned and *errno*
  *		is set appropriately.
  *
- *	BPF_PROG_EXTRACT
- *	 Description
- *	    Extracts a pre-jitted BPF program along with an array of offsets
- *	    for helper function calls that need to be patched up
- *
- *	 Return
- *	    Returns zero on success. On error, -1 is returned.
- *
- *	BPF_TEST_MAP
- *	 Description
- *	    Syscall to help test map getting imp
- *
  * NOTES
  *	eBPF objects (maps and programs) can be shared between processes.
  *
@@ -922,9 +904,7 @@ enum bpf_cmd {
 	BPF_ITER_CREATE,
 	BPF_LINK_DETACH,
 	BPF_PROG_BIND_MAP,
-    BPF_PROG_EXTRACT,
     BPF_PROG_LOAD_VERIFIED,
-    BPF_TEST_MAP,
 };
 
 enum bpf_map_type {
@@ -1409,7 +1389,6 @@ union bpf_attr {
 		__aligned_u64	log_buf;	/* user supplied buffer */
 		__u32		kern_version;	/* not used */
 		__u32		prog_flags;
-        __aligned_u64 extract_len; /* user pointer to store the len of extracted data */
 		char		prog_name[BPF_OBJ_NAME_LEN];
 		__u32		prog_ifindex;	/* ifindex of netdev to prep for */
 		/* For some prog types expected attach type must be known at
@@ -1441,12 +1420,6 @@ union bpf_attr {
 		 */
 		__u32		log_true_size;
 	};
-
-    struct { /* anonymous struct used by the BPF_PROG_EXTRACT command */
-        __aligned_u64 output_ptr;
-        __u32 output_ptr_len;
-        __u32 prog_fd;
-    };
 
     struct { /* anonymous struct used by the BPF_PROG_LOAD_VERIFIED command */
         __aligned_u64 blob;

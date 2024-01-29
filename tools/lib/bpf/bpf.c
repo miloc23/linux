@@ -272,9 +272,6 @@ int bpf_prog_load(enum bpf_prog_type prog_type,
 	attr.insns = ptr_to_u64(insns);
 	attr.insn_cnt = (__u32)insn_cnt;
 
-    /* Copies extract len into bpf_attr */
-    attr.extract_len = OPTS_GET(opts, extract_len, 0);
-
 	attach_prog_fd = OPTS_GET(opts, attach_prog_fd, 0);
 	attach_btf_obj_fd = OPTS_GET(opts, attach_btf_obj_fd, 0);
 

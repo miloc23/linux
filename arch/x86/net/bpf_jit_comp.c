@@ -16,10 +16,6 @@
 #include <asm/set_memory.h>
 #include <asm/nospec-branch.h>
 #include <asm/text-patching.h>
-//#include <linux/disasm.h>
-//
-
-extern const char *func_id_name(int id);
 
 static u8 *emit_code(u8 *ptr, u32 bytes, unsigned int len)
 {
@@ -330,12 +326,11 @@ static int emit_patch(u8 **pprog, void *func, void *ip, u8 opcode)
 	u8 *prog = *pprog;
 	u64 offset;
 
-	//offset = func - (ip + X86_PATCH_SIZE);
-	//if (!is_simm32(offset)) {
-	//	pr_err("Target call %p is out of range\n", func);
-	//	return -ERANGE;
-	//}
-    offset = *(u64 *)func;
+	offset = func - (ip + X86_PATCH_SIZE);
+	if (!is_simm32(offset)) {
+		pr_err("Target call %p is out of range\n", func);
+		return -ERANGE;
+	}
 	EMIT1_off32(opcode, offset);
 	*pprog = prog;
 	return 0;
@@ -982,11 +977,6 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	int ilen, proglen = 0;
 	u8 *prog = temp;
 	int err;
-    int helper_offset_idx = 0;
-    int relocation_idx = 0;
-    int offset_idx = 0;
-
-    printk(KERN_INFO "Jitting prog %s", bpf_prog->aux->name);
 	detect_reg_usage(insn, insn_cnt, callee_regs_used,
 			 &tail_call_seen);
 
@@ -1005,9 +995,6 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 	addrs[0] = proglen;
 	prog = temp;
 
-    //bpf_prog->aux->helper_offsets_size = 0;
-    bpf_prog->aux->relocation_size = 0; // reset size before each iteration.
-    
 	for (i = 1; i <= insn_cnt; i++, insn++) {
 		const s32 imm32 = insn->imm;
 		u32 dst_reg = insn->dst_reg;
@@ -1106,74 +1093,10 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, u8 *image, u8 *rw_image
 			emit_mov_imm32(&prog, BPF_CLASS(insn->code) == BPF_ALU64,
 				       dst_reg, imm32);
 			break;
-            
-            /* 64-bit immediate loads */
 		case BPF_LD | BPF_IMM | BPF_DW:
 			emit_mov_imm64(&prog, dst_reg, insn[1].imm, insn[0].imm);
-            printk(KERN_INFO "Src reg is %d", insn[0].src_reg);
-            switch (insn[0].src_reg) {
-                case BPF_PSEUDO_MAP_VALUE:
-                case BPF_PSEUDO_MAP_FD:
-                case BPF_PSEUDO_MAP_IDX:
-                case BPF_PSEUDO_MAP_IDX_VALUE:
-                    u64 map_ptr = (((u64)insn[1].imm) << 32) | (u64)insn[0].imm;
-                    if (map_ptr > 0) {
-                        struct bpf_map * map = (struct bpf_map *)map_ptr;
-                        if (bpf_prog->aux->relocations) {
-                            u32 access = 0;
-                            //if (bpf_prog->aux->map_relocs) {
-                            //    printk(KERN_INFO "Looking for a matching insn %px\n", insn);
-                            //    for (int count = 0; count < bpf_prog->aux->nr_access_offsets; count++) {
-                            //        printk(KERN_INFO "got %px\n", bpf_prog->aux->map_relocs[count].insn);
-                            //        if (insn == bpf_prog->aux->map_relocs[count].insn) {
-                            //            printk(KERN_INFO "Found a matching instruction\n");
-                            //            access = bpf_prog->aux->map_relocs[bpf_prog->aux->nr_access_offsets].access_off;
-                            //            break;
-                            //        }
-                            //    }
-                            //}
-
-                            if (offset_idx < bpf_prog->aux->nr_access_offsets) {
-                                    printk(KERN_INFO "num: %u val is %u\n", bpf_prog->aux->nr_access_offsets, bpf_prog->aux->access_offsets[offset_idx]);
-                                    access = bpf_prog->aux->access_offsets[offset_idx];
-                                    offset_idx++;
-                            }
-                            else {
-                                return -1;
-                            }
-                            bpf_prog->aux->relocations[relocation_idx].insn = insn;
-                            printk(KERN_INFO "Instruction %d at %px\n", relocation_idx, insn);
-                            bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1];
-                            bpf_prog->aux->relocations[relocation_idx].type = R_MAP;
-                            printk(KERN_INFO "Access is %u\n", access);
-                            bpf_prog->aux->relocations[relocation_idx].access_off = access;
-
-                            char * str = strstr(map->name, ".");
-                            if (str == NULL) {
-                                printk(KERN_INFO "in jit map name is %s", map->name);
-                                strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, map->name, KSYM_NAME_LEN);
-                            }
-                            else {
-                                //char * ptr = str;
-                                //// Change . to _ because BPFFS disallows periods
-                                //while (*ptr) {
-                                //    if (*ptr == '.') {
-                                //        *ptr = '_';
-                                //    }
-                                //    ptr++;
-                                //}
-                                printk(KERN_INFO "in jit map name is %s", str+1);
-                                strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, str+1, KSYM_NAME_LEN);
-                            }
-                            bpf_prog->aux->relocation_size++;
-                            relocation_idx++;
-                        } 
-                    }
-                    fallthrough;
-                default:
-			    insn++;
-		    	i++;
-            }
+            insn++;
+            i++;
 			break;
 
 			/* dst %= src, dst /= src, dst %= imm32, dst /= imm32 */
@@ -1447,8 +1370,6 @@ st:			if (is_imm8(insn->off))
 		case BPF_LDX | BPF_PROBE_MEM | BPF_DW:
 			insn_off = insn->off;
 
-                
-                    // This is our offset? image + addrs[i - 1]
 			if (BPF_MODE(insn->code) == BPF_PROBE_MEM) {
 				/* Conservatively check that src_reg + insn->off is a kernel address:
 				 *   src_reg + insn->off >= TASK_SIZE_MAX + PAGE_SIZE
@@ -1612,7 +1533,6 @@ st:			if (is_imm8(insn->off))
 			/* call */
 		case BPF_JMP | BPF_CALL: {
 			int offs;
-            u64 helper_id;
 
 			func = (u8 *) __bpf_call_base + imm32;
 			if (tail_call_reachable) {
@@ -1627,35 +1547,8 @@ st:			if (is_imm8(insn->off))
 					return -EINVAL;
 				offs = x86_call_depth_emit_accounting(&prog, func);
 			}
-            /* Make func just be the helper ID
-             * We store this in offset to make the call_depth work  */
-            insn_off = insn->off;
-            //printk(KERN_INFO "Offset is %d", insn_off);
-            helper_id = (u64)insn->off; // May not need this
-            //helper_id = 0;
-			if (emit_call(&prog, &helper_id, image + addrs[i - 1] + offs))
+			if (emit_call(&prog, func, image + addrs[i - 1] + offs))
 				return -EINVAL;
-            printk(KERN_INFO "Helper Call at %lu", addrs[i-1] + offs);
-            // Does not support kfunc
-            if (bpf_prog->aux->relocations) {
-               char * symname = kzalloc(KSYM_NAME_LEN, GFP_KERNEL);
-               lookup_symbol_name(func, symname);
-               printk(KERN_INFO "Function imm is %llx with name %s\n", func, symname); 
-               bpf_prog->aux->relocations[relocation_idx].offset = addrs[i-1] + offs;
-               bpf_prog->aux->relocations[relocation_idx].type = R_PROG;
-               strncpy(bpf_prog->aux->relocations[relocation_idx].symbol, symname, KSYM_NAME_LEN);
-               bpf_prog->aux->relocation_size++;
-               relocation_idx++;
-               kfree(symname);
-            } 
-            //if (bpf_prog->aux->helper_offsets) {
-            //    bpf_prog->aux->helper_offsets[helper_offset_idx].offset = addrs[i-1] + offs;
-            //    bpf_prog->aux->helper_offsets[helper_offset_idx].id = insn_off;
-            //    // Stores the name of the helper into the struct */
-//          //      bpf_prog->aux->helper_offsets[helper_offset_idx].name = func_id_name(insn_off);
-            //    bpf_prog->aux->helper_offsets_size++;
-            //    helper_offset_idx++;
-            //}
 			break;
 		}
 

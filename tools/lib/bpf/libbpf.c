@@ -649,8 +649,6 @@ struct bpf_object {
 
     /* Struct containing the verified bpf prog */
     struct bpf_verified verified;
-    /* pointer to __u64 to store length of data */
-    __aligned_u64 extract_len;
 
 	struct bpf_gen *gen_loader;
 
@@ -6862,8 +6860,6 @@ static int bpf_object_load_prog(struct bpf_object *obj, struct bpf_program *prog
 	load_attr.prog_flags = prog->prog_flags;
 	load_attr.fd_array = obj->fd_array;
 
-    load_attr.extract_len = obj->extract_len;
-
 	/* adjust load_attr if sec_def provides custom preload callback */
 	if (prog->sec_def && prog->sec_def->prog_prepare_load_fn) {
 		err = prog->sec_def->prog_prepare_load_fn(prog, &load_attr, prog->sec_def->cookie);
@@ -12824,12 +12820,6 @@ void bpf_object__destroy_skeleton(struct bpf_object_skeleton *s)
 	free(s->maps);
 	free(s->progs);
 	free(s);
-}
-
-/* Sets the extract_len field of bpf_object */
-void bpf_object__set_extract_len(struct bpf_object *obj, __u64 *len)
-{
-    obj->extract_len = (__aligned_u64)len;
 }
 
 // Special behavior for pinning maps when the program is pre-verified

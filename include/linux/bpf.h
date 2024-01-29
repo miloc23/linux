@@ -51,7 +51,6 @@ struct module;
 struct bpf_func_state;
 struct ftrace_ops;
 struct cgroup;
-struct bpf_helper_reloc;
 
 extern struct idr btf_idr;
 extern spinlock_t btf_idr_lock;
@@ -1166,9 +1165,6 @@ static __always_inline __nocfi unsigned int bpf_dispatcher_nop_func(
 	const struct bpf_insn *insnsi,
 	bpf_func_t bpf_func)
 {
-    //unsigned int val = bpf_func(ctx, insnsi);
-    //printk(KERN_INFO "return is %u", val);
-    //return val;
 	return bpf_func(ctx, insnsi);
 }
 
@@ -1410,9 +1406,6 @@ struct bpf_prog_aux {
 	u32 verified_insns;
 	int cgroup_atype; /* enum cgroup_bpf_attach_type */
 	struct bpf_map *cgroup_storage[MAX_BPF_CGROUP_STORAGE_TYPE];
-    //u32 *helper_offsets; /* Array of u32's to store offsets to helpers in jited code */
-    u32 helper_offsets_size; /* Size of the array */
-    struct bpf_helper_reloc * helper_offsets;
 	char name[BPF_OBJ_NAME_LEN];
 #ifdef CONFIG_SECURITY
 	void *security;
@@ -1450,6 +1443,7 @@ struct bpf_prog_aux {
 		struct work_struct work;
 		struct rcu_head	rcu;
 	};
+    // May not be needed
     // array of access offsets
     u32 nr_access_offsets;
     u32 * access_offsets;
@@ -1491,15 +1485,6 @@ struct bpf_prog {
 		DECLARE_FLEX_ARRAY(struct sock_filter, insns);
 		DECLARE_FLEX_ARRAY(struct bpf_insn, insnsi);
 	};
-};
-
-/*
- * Contains an offset in a program and the name of the helper
- */
-struct bpf_helper_reloc {
-    u32 offset;
-    u8  id;
-	char name[KSYM_NAME_LEN];
 };
 
 struct bpf_array_aux {
@@ -2230,6 +2215,7 @@ int bpf_check_uarg_tail_zero(bpfptr_t uaddr, size_t expected_size,
 /* verify correctness of eBPF program */
 int bpf_check(struct bpf_prog **fp, union bpf_attr *attr, bpfptr_t uattr, u32 uattr_size);
 
+// Not needed?
 int bpf_verifier_env_mock(struct bpf_verifier_env **env, enum bpf_prog_type type);
 #ifndef CONFIG_BPF_JIT_ALWAYS_ON
 void bpf_patch_call_args(struct bpf_insn *insn, u32 stack_depth);

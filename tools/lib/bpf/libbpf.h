@@ -192,15 +192,6 @@ struct bpf_object_open_opts {
  */
 LIBBPF_API struct bpf_object *bpf_object__open(const char *path);
 
-/**
- * @brief **bpf_object__set_extract_len()** sets the extract_len field
- * of the bpf_attr struct for BPF_PROG_LOAD to allow extraction by 
- * knowing the length of data to copy.
- * @param a pointer to a __u64.
- * @return nothing
- */
-LIBBPF_API void bpf_object__set_extract_len(struct bpf_object *obj, __u64 *extract_len);
-
 LIBBPF_API struct bpf_object * bpf_object__open_verified(const char * path);
 
 LIBBPF_API int bpf_object__load_verified(struct bpf_object *);

@@ -80,9 +80,6 @@ struct bpf_prog_load_opts {
 	__u32 attach_prog_fd;
 	__u32 attach_btf_obj_fd;
 
-    /* ptr to store the length of data to copy out */
-    __aligned_u64 extract_len;
-
 	const int *fd_array;
 
 	/* .BTF.ext func info data */

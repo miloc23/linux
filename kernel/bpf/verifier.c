@@ -16191,10 +16191,6 @@ static bool bpf_map_is_cgroup_storage(struct bpf_map *map)
 		map->map_type == BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE);
 }
 
-//static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
-//{
-//    return 0;
-//}
 /* find and rewrite pseudo imm in ld_imm64 instructions:
  *
  * 1. if it accesses map FD, replace it with actual map pointer.
@@ -16251,8 +16247,6 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 				goto next_insn;
 			}
 
-            printk(KERN_INFO "Pseudo Map in bpf prog %s\n", env->prog->aux->name);
-            printk(KERN_INFO "Instruction: src: %u, imm: %u", insn[0].src_reg, insn[0].imm);
 			/* In final convert_pseudo_ld_imm64() step, this is
 			 * converted into regular 64-bit imm load insn.
 			 */
@@ -16262,7 +16256,7 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 				break;
 			case BPF_PSEUDO_MAP_FD:
 			case BPF_PSEUDO_MAP_IDX:
-				if (insn[1].imm == 0) 
+				if (insn[1].imm == 0)
 					break;
 				fallthrough;
 			default:
@@ -16289,9 +16283,6 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 
 			f = fdget(fd);
 			map = __bpf_map_get(f);
-            printk(KERN_INFO "Map name is %s\n", map->name);
-            printk(KERN_INFO "src reg is %d", insn[0].src_reg);
-            //strncpy(insn->map_name, map->name, BPF_OBJ_NAME_LEN);
 			if (IS_ERR(map)) {
 				verbose(env, "fd %d is not pointing to valid bpf_map\n",
 					insn[0].imm);
@@ -16310,48 +16301,28 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 				addr = (unsigned long)map;
 			} else {
                 u32 off = insn[1].imm;
-                env->prog->aux->map_relocs[env->prog->aux->nr_access_offsets].insn = insn;
-                env->prog->aux->map_relocs[env->prog->aux->nr_access_offsets].access_off = off;
-                // Save the offset in the internal map in the offsets of the instructions?
-                env->prog->aux->access_offsets[env->prog->aux->nr_access_offsets] = off;
-                printk(KERN_INFO "In Verifier offset is %u val is %u access_off is %u\n", off, env->prog->aux->access_offsets[env->prog->aux->nr_access_offsets], env->prog->aux->nr_access_offsets);
-                printk(KERN_INFO "Insn at %px\n", insn);
-                env->prog->aux->nr_access_offsets++;
-                //insn[0].off = (u16)addr;
-                //insn[1].off = addr >> 16;
-                addr = (unsigned long)map;
+                if (off >= BPF_MAX_VAR_OFF) {
+                    verbose(env, "direct value offset of %u is not allowed\n", off);
+                    fdput(f);
+                    return -EINVAL;
+                }
+                
+                if (!map->ops->map_direct_value_addr) {
+                    verbose(env, "no direct value access support for this map type\n");
+                    fdput(f);
+                    return -EINVAL;
+                }
+
+                err = map->ops->map_direct_value_addr(map, &addr, off);
+                if (err) {
+                    verbose(env, "invalid access to map value pointer, value_size=%u off=%u\n", map->value_size, off);
+                    fdput(f);
+                    return err;
+                }
+
+                aux->map_off = off;
+                addr += off;
             }
-            // We need to keep track of the offset ?
-        //    else {
-		//		u32 off = insn[1].imm;
-
-		//		if (off >= BPF_MAX_VAR_OFF) {
-		//			verbose(env, "direct value offset of %u is not allowed\n", off);
-		//			fdput(f);
-		//			return -EINVAL;
-		//		}
-
-		//		if (!map->ops->map_direct_value_addr) {
-		//			verbose(env, "no direct value access support for this map type\n");
-		//			fdput(f);
-		//			return -EINVAL;
-		//		}
-
-		//		err = map->ops->map_direct_value_addr(map, &addr, off);
-		//		if (err) {
-		//			verbose(env, "invalid access to map value pointer, value_size=%u off=%u\n",
-		//				map->value_size, off);
-		//			fdput(f);
-		//			return err;
-		//		}
-
-		//		aux->map_off = off;
-		//		addr += off;
-		//	}
-            
-            // Replace with F's to see
-            //insn[0].imm = 0xFFFFFFFF;
-            //insn[1].imm = 0xFFFFFFFF;
 			insn[0].imm = (u32)addr;
 			insn[1].imm = addr >> 32;
 
@@ -16433,7 +16404,7 @@ static void convert_pseudo_ld_imm64(struct bpf_verifier_env *env)
 			continue;
 		if (insn->src_reg == BPF_PSEUDO_FUNC)
 			continue;
-		//insn->src_reg = 0;
+		insn->src_reg = 0;
 	}
 }
 
@@ -17494,7 +17465,6 @@ static int do_misc_fixups(struct bpf_verifier_env *env)
 	struct bpf_prog *new_prog;
 	struct bpf_map *map_ptr;
 	int i, ret, cnt, delta = 0;
-    int helper_calls = 0;
 
 	for (i = 0; i < insn_cnt; i++, insn++) {
 		/* Make divide-by-zero exceptions impossible. */
@@ -17634,10 +17604,8 @@ static int do_misc_fixups(struct bpf_verifier_env *env)
 
 		if (insn->imm == BPF_FUNC_get_route_realm)
 			prog->dst_needed = 1;
-		if (insn->imm == BPF_FUNC_get_prandom_u32) {
-            printk(KERN_INFO "Init bpf random\n");
+		if (insn->imm == BPF_FUNC_get_prandom_u32)
 			bpf_user_rnd_init_once();
-        }
 		if (insn->imm == BPF_FUNC_override_return)
 			prog->kprobe_override = 1;
 		if (insn->imm == BPF_FUNC_tail_call) {
@@ -17771,100 +17739,100 @@ static int do_misc_fixups(struct bpf_verifier_env *env)
 		 * and other inlining handlers are currently limited to 64 bit
 		 * only.
 		 */
-//		if (prog->jit_requested && BITS_PER_LONG == 64 &&
-//		    (insn->imm == BPF_FUNC_map_lookup_elem ||
-//		     insn->imm == BPF_FUNC_map_update_elem ||
-//		     insn->imm == BPF_FUNC_map_delete_elem ||
-//		     insn->imm == BPF_FUNC_map_push_elem   ||
-//		     insn->imm == BPF_FUNC_map_pop_elem    ||
-//		     insn->imm == BPF_FUNC_map_peek_elem   ||
-//		     insn->imm == BPF_FUNC_redirect_map    ||
-//		     insn->imm == BPF_FUNC_for_each_map_elem ||
-//		     insn->imm == BPF_FUNC_map_lookup_percpu_elem)) {
-//			aux = &env->insn_aux_data[i + delta];
-//			if (bpf_map_ptr_poisoned(aux))
-//				goto patch_call_imm;
-//
-//			map_ptr = BPF_MAP_PTR(aux->map_ptr_state);
-//			ops = map_ptr->ops;
-//			if (insn->imm == BPF_FUNC_map_lookup_elem &&
-//			    ops->map_gen_lookup) {
-//				cnt = ops->map_gen_lookup(map_ptr, insn_buf);
-//				if (cnt == -EOPNOTSUPP)
-//					goto patch_map_ops_generic;
-//				if (cnt <= 0 || cnt >= ARRAY_SIZE(insn_buf)) {
-//					verbose(env, "bpf verifier is misconfigured\n");
-//					return -EINVAL;
-//				}
-//
-//				new_prog = bpf_patch_insn_data(env, i + delta,
-//							       insn_buf, cnt);
-//				if (!new_prog)
-//					return -ENOMEM;
-//
-//				delta    += cnt - 1;
-//				env->prog = prog = new_prog;
-//				insn      = new_prog->insnsi + i + delta;
-//				continue;
-//			}
-//
-//			BUILD_BUG_ON(!__same_type(ops->map_lookup_elem,
-//				     (void *(*)(struct bpf_map *map, void *key))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_delete_elem,
-//				     (long (*)(struct bpf_map *map, void *key))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_update_elem,
-//				     (long (*)(struct bpf_map *map, void *key, void *value,
-//					      u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_push_elem,
-//				     (long (*)(struct bpf_map *map, void *value,
-//					      u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_pop_elem,
-//				     (long (*)(struct bpf_map *map, void *value))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_peek_elem,
-//				     (long (*)(struct bpf_map *map, void *value))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_redirect,
-//				     (long (*)(struct bpf_map *map, u64 index, u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_for_each_callback,
-//				     (long (*)(struct bpf_map *map,
-//					      bpf_callback_t callback_fn,
-//					      void *callback_ctx,
-//					      u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_lookup_percpu_elem,
-//				     (void *(*)(struct bpf_map *map, void *key, u32 cpu))NULL));
-//
-//patch_map_ops_generic:
-//			switch (insn->imm) {
-//			case BPF_FUNC_map_lookup_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_lookup_elem);
-//				continue;
-//			case BPF_FUNC_map_update_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_update_elem);
-//				continue;
-//			case BPF_FUNC_map_delete_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_delete_elem);
-//				continue;
-//			case BPF_FUNC_map_push_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_push_elem);
-//				continue;
-//			case BPF_FUNC_map_pop_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_pop_elem);
-//				continue;
-//			case BPF_FUNC_map_peek_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_peek_elem);
-//				continue;
-//			case BPF_FUNC_redirect_map:
-//				insn->imm = BPF_CALL_IMM(ops->map_redirect);
-//				continue;
-//			case BPF_FUNC_for_each_map_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_for_each_callback);
-//				continue;
-//			case BPF_FUNC_map_lookup_percpu_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_lookup_percpu_elem);
-//				continue;
-//			}
-//
-//			goto patch_call_imm;
-//		}
+		if (prog->jit_requested && BITS_PER_LONG == 64 &&
+		    (insn->imm == BPF_FUNC_map_lookup_elem ||
+		     insn->imm == BPF_FUNC_map_update_elem ||
+		     insn->imm == BPF_FUNC_map_delete_elem ||
+		     insn->imm == BPF_FUNC_map_push_elem   ||
+		     insn->imm == BPF_FUNC_map_pop_elem    ||
+		     insn->imm == BPF_FUNC_map_peek_elem   ||
+		     insn->imm == BPF_FUNC_redirect_map    ||
+		     insn->imm == BPF_FUNC_for_each_map_elem ||
+		     insn->imm == BPF_FUNC_map_lookup_percpu_elem)) {
+			aux = &env->insn_aux_data[i + delta];
+			if (bpf_map_ptr_poisoned(aux))
+				goto patch_call_imm;
+
+			map_ptr = BPF_MAP_PTR(aux->map_ptr_state);
+			ops = map_ptr->ops;
+			if (insn->imm == BPF_FUNC_map_lookup_elem &&
+			    ops->map_gen_lookup) {
+				cnt = ops->map_gen_lookup(map_ptr, insn_buf);
+				if (cnt == -EOPNOTSUPP)
+					goto patch_map_ops_generic;
+				if (cnt <= 0 || cnt >= ARRAY_SIZE(insn_buf)) {
+					verbose(env, "bpf verifier is misconfigured\n");
+					return -EINVAL;
+				}
+
+				new_prog = bpf_patch_insn_data(env, i + delta,
+							       insn_buf, cnt);
+				if (!new_prog)
+					return -ENOMEM;
+
+				delta    += cnt - 1;
+				env->prog = prog = new_prog;
+				insn      = new_prog->insnsi + i + delta;
+				continue;
+			}
+
+			BUILD_BUG_ON(!__same_type(ops->map_lookup_elem,
+				     (void *(*)(struct bpf_map *map, void *key))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_delete_elem,
+				     (long (*)(struct bpf_map *map, void *key))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_update_elem,
+				     (long (*)(struct bpf_map *map, void *key, void *value,
+					      u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_push_elem,
+				     (long (*)(struct bpf_map *map, void *value,
+					      u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_pop_elem,
+				     (long (*)(struct bpf_map *map, void *value))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_peek_elem,
+				     (long (*)(struct bpf_map *map, void *value))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_redirect,
+				     (long (*)(struct bpf_map *map, u64 index, u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_for_each_callback,
+				     (long (*)(struct bpf_map *map,
+					      bpf_callback_t callback_fn,
+					      void *callback_ctx,
+					      u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_lookup_percpu_elem,
+				     (void *(*)(struct bpf_map *map, void *key, u32 cpu))NULL));
+
+patch_map_ops_generic:
+			switch (insn->imm) {
+			case BPF_FUNC_map_lookup_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_lookup_elem);
+				continue;
+			case BPF_FUNC_map_update_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_update_elem);
+				continue;
+			case BPF_FUNC_map_delete_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_delete_elem);
+				continue;
+			case BPF_FUNC_map_push_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_push_elem);
+				continue;
+			case BPF_FUNC_map_pop_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_pop_elem);
+				continue;
+			case BPF_FUNC_map_peek_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_peek_elem);
+				continue;
+			case BPF_FUNC_redirect_map:
+				insn->imm = BPF_CALL_IMM(ops->map_redirect);
+				continue;
+			case BPF_FUNC_for_each_map_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_for_each_callback);
+				continue;
+			case BPF_FUNC_map_lookup_percpu_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_lookup_percpu_elem);
+				continue;
+			}
+
+			goto patch_call_imm;
+		}
 
 		/* Implement bpf_jiffies64 inline. */
 		if (prog->jit_requested && BITS_PER_LONG == 64 &&
@@ -17985,13 +17953,7 @@ patch_call_imm:
 				func_id_name(insn->imm), insn->imm);
 			return -EFAULT;
 		}
-        /* Store the helper id in the offset field. 
-         * The number of helpers is low enough that the cast from u32 to s16
-         * is safe */
-        insn->off = insn->imm;
 		insn->imm = fn->func - __bpf_call_base;
-        helper_calls++;
-        
 	}
 
 	/* Since poke tab is now finalized, publish aux to tracker. */
@@ -18012,12 +17974,6 @@ patch_call_imm:
 	}
 
 	sort_kfunc_descs_by_imm_off(env->prog);
-
-    printk(KERN_INFO "There are %d helper calls", helper_calls);
-    
-    // Now uses the bpf_helper_reloc struct
-    env->prog->aux->helper_offsets = (struct bpf_helper_reloc *)kcalloc(sizeof(struct bpf_helper_reloc), helper_calls, GFP_KERNEL);
-    
 
 	return 0;
 }
@@ -18826,17 +18782,6 @@ struct btf *bpf_get_btf_vmlinux(void)
 		mutex_unlock(&bpf_verifier_lock);
 	}
 	return btf_vmlinux;
-}
-
-int bpf_verifier_env_mock(struct bpf_verifier_env **env, enum bpf_prog_type type)
-{
-    struct bpf_verifier_env *local = kzalloc(sizeof(struct bpf_verifier_env), GFP_KERNEL);
-    if (!local)
-        return -ENOMEM;
-
-	local->ops = bpf_verifier_ops[type];
-    *env = local;
-    return 0;
 }
 
 int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr, __u32 uattr_size)

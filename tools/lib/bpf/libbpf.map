@@ -394,7 +394,6 @@ LIBBPF_1.2.0 {
 
 LIBBPF_1.2.1 {
     global:
-        bpf_object__set_extract_len;
         bpf_object__open_verified;
         bpf_object__load_verified;
 } LIBBPF_1.2.0;
