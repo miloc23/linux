@@ -19698,22 +19698,22 @@ static int do_misc_fixups(struct bpf_verifier_env *env)
 		 * and other inlining handlers are currently limited to 64 bit
 		 * only.
 		 */
-//		if (prog->jit_requested && BITS_PER_LONG == 64 &&
-//		    (insn->imm == BPF_FUNC_map_lookup_elem ||
-//		     insn->imm == BPF_FUNC_map_update_elem ||
-//		     insn->imm == BPF_FUNC_map_delete_elem ||
-//		     insn->imm == BPF_FUNC_map_push_elem   ||
-//		     insn->imm == BPF_FUNC_map_pop_elem    ||
-//		     insn->imm == BPF_FUNC_map_peek_elem   ||
-//		     insn->imm == BPF_FUNC_redirect_map    ||
-//		     insn->imm == BPF_FUNC_for_each_map_elem ||
-//		     insn->imm == BPF_FUNC_map_lookup_percpu_elem)) {
-//			aux = &env->insn_aux_data[i + delta];
-//			if (bpf_map_ptr_poisoned(aux))
-//				goto patch_call_imm;
-//
-//			map_ptr = BPF_MAP_PTR(aux->map_ptr_state);
-//			ops = map_ptr->ops;
+		if (prog->jit_requested && BITS_PER_LONG == 64 &&
+		    (insn->imm == BPF_FUNC_map_lookup_elem ||
+		     insn->imm == BPF_FUNC_map_update_elem ||
+		     insn->imm == BPF_FUNC_map_delete_elem ||
+		     insn->imm == BPF_FUNC_map_push_elem   ||
+		     insn->imm == BPF_FUNC_map_pop_elem    ||
+		     insn->imm == BPF_FUNC_map_peek_elem   ||
+		     insn->imm == BPF_FUNC_redirect_map    ||
+		     insn->imm == BPF_FUNC_for_each_map_elem ||
+		     insn->imm == BPF_FUNC_map_lookup_percpu_elem)) {
+			aux = &env->insn_aux_data[i + delta];
+			if (bpf_map_ptr_poisoned(aux))
+				goto patch_call_imm;
+
+			map_ptr = BPF_MAP_PTR(aux->map_ptr_state);
+			ops = map_ptr->ops;
 //			if (insn->imm == BPF_FUNC_map_lookup_elem &&
 //			    ops->map_gen_lookup) {
 //				cnt = ops->map_gen_lookup(map_ptr, insn_buf);
@@ -19734,65 +19734,65 @@ static int do_misc_fixups(struct bpf_verifier_env *env)
 //				insn      = new_prog->insnsi + i + delta;
 //				continue;
 //			}
-//
-//			BUILD_BUG_ON(!__same_type(ops->map_lookup_elem,
-//				     (void *(*)(struct bpf_map *map, void *key))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_delete_elem,
-//				     (long (*)(struct bpf_map *map, void *key))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_update_elem,
-//				     (long (*)(struct bpf_map *map, void *key, void *value,
-//					      u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_push_elem,
-//				     (long (*)(struct bpf_map *map, void *value,
-//					      u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_pop_elem,
-//				     (long (*)(struct bpf_map *map, void *value))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_peek_elem,
-//				     (long (*)(struct bpf_map *map, void *value))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_redirect,
-//				     (long (*)(struct bpf_map *map, u64 index, u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_for_each_callback,
-//				     (long (*)(struct bpf_map *map,
-//					      bpf_callback_t callback_fn,
-//					      void *callback_ctx,
-//					      u64 flags))NULL));
-//			BUILD_BUG_ON(!__same_type(ops->map_lookup_percpu_elem,
-//				     (void *(*)(struct bpf_map *map, void *key, u32 cpu))NULL));
-//
-//patch_map_ops_generic:
-//			switch (insn->imm) {
-//			case BPF_FUNC_map_lookup_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_lookup_elem);
-//				continue;
-//			case BPF_FUNC_map_update_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_update_elem);
-//				continue;
-//			case BPF_FUNC_map_delete_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_delete_elem);
-//				continue;
-//			case BPF_FUNC_map_push_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_push_elem);
-//				continue;
-//			case BPF_FUNC_map_pop_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_pop_elem);
-//				continue;
-//			case BPF_FUNC_map_peek_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_peek_elem);
-//				continue;
-//			case BPF_FUNC_redirect_map:
-//				insn->imm = BPF_CALL_IMM(ops->map_redirect);
-//				continue;
-//			case BPF_FUNC_for_each_map_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_for_each_callback);
-//				continue;
-//			case BPF_FUNC_map_lookup_percpu_elem:
-//				insn->imm = BPF_CALL_IMM(ops->map_lookup_percpu_elem);
-//				continue;
-//			}
-//
-//			goto patch_call_imm;
-//		}
-//
+
+			BUILD_BUG_ON(!__same_type(ops->map_lookup_elem,
+				     (void *(*)(struct bpf_map *map, void *key))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_delete_elem,
+				     (long (*)(struct bpf_map *map, void *key))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_update_elem,
+				     (long (*)(struct bpf_map *map, void *key, void *value,
+					      u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_push_elem,
+				     (long (*)(struct bpf_map *map, void *value,
+					      u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_pop_elem,
+				     (long (*)(struct bpf_map *map, void *value))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_peek_elem,
+				     (long (*)(struct bpf_map *map, void *value))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_redirect,
+				     (long (*)(struct bpf_map *map, u64 index, u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_for_each_callback,
+				     (long (*)(struct bpf_map *map,
+					      bpf_callback_t callback_fn,
+					      void *callback_ctx,
+					      u64 flags))NULL));
+			BUILD_BUG_ON(!__same_type(ops->map_lookup_percpu_elem,
+				     (void *(*)(struct bpf_map *map, void *key, u32 cpu))NULL));
+
+patch_map_ops_generic:
+			switch (insn->imm) {
+			case BPF_FUNC_map_lookup_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_lookup_elem);
+				continue;
+			case BPF_FUNC_map_update_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_update_elem);
+				continue;
+			case BPF_FUNC_map_delete_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_delete_elem);
+				continue;
+			case BPF_FUNC_map_push_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_push_elem);
+				continue;
+			case BPF_FUNC_map_pop_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_pop_elem);
+				continue;
+			case BPF_FUNC_map_peek_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_peek_elem);
+				continue;
+			case BPF_FUNC_redirect_map:
+				insn->imm = BPF_CALL_IMM(ops->map_redirect);
+				continue;
+			case BPF_FUNC_for_each_map_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_for_each_callback);
+				continue;
+			case BPF_FUNC_map_lookup_percpu_elem:
+				insn->imm = BPF_CALL_IMM(ops->map_lookup_percpu_elem);
+				continue;
+			}
+
+			goto patch_call_imm;
+		}
+
 		/* Implement bpf_jiffies64 inline. */
 		if (prog->jit_requested && BITS_PER_LONG == 64 &&
 		    insn->imm == BPF_FUNC_jiffies64) {
