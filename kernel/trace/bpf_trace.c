@@ -144,9 +144,17 @@ unsigned int trace_call_bpf(struct trace_event_call *call, void *ctx)
 	 * rcu_dereference() which is accepted risk.
 	 */
 	rcu_read_lock();
-	ret = bpf_prog_run_array(rcu_dereference(call->prog_array),
-				 ctx, bpf_prog_run);
-	rcu_read_unlock();
+    // BPF tracing is disabled by default
+    if (current->bpf_enable) {
+        printk(KERN_INFO "Current PID is %d\n", current->pid);
+	    ret = bpf_prog_run_array(rcu_dereference(call->prog_array),
+				    ctx, bpf_prog_run);
+        rcu_read_unlock();
+    }
+    else {
+    	rcu_read_unlock();
+        printk(KERN_INFO "BPF trace disabled\n");
+    }
 
  out:
 	__this_cpu_dec(bpf_prog_active);
